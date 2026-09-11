@@ -154,8 +154,7 @@ jobs:
               WEBUNTIS_USER="${{ secrets.WEBUNTIS_USER }}" \
               WEBUNTIS_PASSWORD="${{ secrets.WEBUNTIS_PASSWORD }}" \
               MCP_COMMAND="uvx" \
-              MCP_ARGS='--from git+https://github.com/kohlsalem/untis-mcp --with mcp<2 untis-mcp' \
-              MCP_STARTUP_TIMEOUT_SECONDS="30"
+              MCP_ARGS="--from git+https://github.com/kohlsalem/untis-mcp --with mcp<2 untis-mcp"
           echo "✓ Backend environment variables configured"
 
       - name: Restart Backend
