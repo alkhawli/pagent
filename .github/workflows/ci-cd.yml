@@ -115,6 +115,9 @@ jobs:
           push: true
           build-args: |
             VITE_API_BASE_URL=https://pagent-backend.azurewebsites.net
+            VITE_LOGIN_USERNAME=${{ secrets.VITE_LOGIN_USERNAME }}
+            VITE_LOGIN_PASSWORD=${{ secrets.VITE_LOGIN_PASSWORD }}
+            VITE_API_KEY=${{ secrets.API_KEY }}
           tags: |
             ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.ACR_NAME }}.azurecr.io/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
@@ -134,6 +137,26 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure Backend Environment Variables
+        run: |
+          az webapp config appsettings set \
+            --name ${{ env.BACKEND_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --settings \
+              API_KEY="${{ secrets.API_KEY }}" \
+              AZURE_FOUNDRY_ENDPOINT="${{ secrets.AZURE_FOUNDRY_ENDPOINT }}" \
+              AZURE_FOUNDRY_API_KEY="${{ secrets.AZURE_FOUNDRY_API_KEY }}" \
+              AZURE_FOUNDRY_MODEL_DEPLOYMENT="gpt-4o-mini" \
+              AZURE_FOUNDRY_API_VERSION="2024-10-21" \
+              WEBUNTIS_SERVER="${{ secrets.WEBUNTIS_SERVER }}" \
+              WEBUNTIS_SCHOOL="${{ secrets.WEBUNTIS_SCHOOL }}" \
+              WEBUNTIS_USER="${{ secrets.WEBUNTIS_USER }}" \
+              WEBUNTIS_PASSWORD="${{ secrets.WEBUNTIS_PASSWORD }}" \
+              MCP_COMMAND="uvx" \
+              MCP_ARGS='--from git+https://github.com/kohlsalem/untis-mcp --with mcp<2 untis-mcp' \
+              MCP_STARTUP_TIMEOUT_SECONDS="30"
+          echo "✓ Backend environment variables configured"
 
       - name: Restart Backend
         run: |
