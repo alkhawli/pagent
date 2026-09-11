@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const VALID_USERNAME = 'toufik.malak'
-const VALID_PASSWORD = 'ryantibanoah123$'
-const API_KEY = 'EvncjKw_nyFiVM6rmYt-fud9v-XXHMheWsLU1EhqJug'
+const VALID_USERNAME = import.meta.env.VITE_LOGIN_USERNAME
+const VALID_PASSWORD = import.meta.env.VITE_LOGIN_PASSWORD
+const API_KEY = import.meta.env.VITE_API_KEY
 
 export function LoginPage() {
   const [username, setUsername] = useState('')
