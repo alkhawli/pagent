@@ -11,7 +11,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
-from app.dashboard import build_dashboard, load_latest_snapshot, save_snapshot
+from app.dashboard import build_dashboard
 from app.foundry_agent import answer_with_mcp
 from app.mcp_client import McpClient
 from app.scheduler import create_scheduler, refresh_dashboard_snapshot

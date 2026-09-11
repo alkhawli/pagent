@@ -369,6 +369,9 @@ async def build_dashboard(client: McpClient, settings: Settings) -> dict[str, An
 
 
 
+# NOTE: Snapshot functions below are deprecated - dashboard now uses in-memory caching (app.state.dashboard_cache)
+# Kept for backwards compatibility but no longer used in production
+
 def _snapshots_root(settings: Settings) -> Path:
     return Path(settings.dashboard_data_dir) / "snapshots"
 
@@ -378,7 +381,7 @@ def latest_snapshot_path(settings: Settings) -> Path:
 
 
 def save_snapshot(settings: Settings, data: dict[str, Any]) -> Path:
-    """Persist a dashboard snapshot under data/snapshots/<year>/<month>/<timestamp>.json and update latest.json."""
+    """DEPRECATED: Persist a dashboard snapshot under data/snapshots/<year>/<month>/<timestamp>.json and update latest.json."""
     now = datetime.now()
     month_dir = _snapshots_root(settings) / f"{now:%Y}" / f"{now:%m}"
     month_dir.mkdir(parents=True, exist_ok=True)
@@ -394,6 +397,7 @@ def save_snapshot(settings: Settings, data: dict[str, Any]) -> Path:
 
 
 def load_latest_snapshot(settings: Settings) -> dict[str, Any] | None:
+    """DEPRECATED: Load snapshot from disk. Use app.state.dashboard_cache instead."""
     path = latest_snapshot_path(settings)
     if not path.exists():
         return None
