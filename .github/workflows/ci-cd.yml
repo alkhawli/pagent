@@ -152,8 +152,11 @@ jobs:
               WEBUNTIS_SERVER="${{ secrets.WEBUNTIS_SERVER }}" \
               WEBUNTIS_SCHOOL="${{ secrets.WEBUNTIS_SCHOOL }}" \
               WEBUNTIS_USER="${{ secrets.WEBUNTIS_USER }}" \
-              WEBUNTIS_PASSWORD="${{ secrets.WEBUNTIS_PASSWORD }}"
-          echo "✓ Backend environment variables configured (using Docker-installed untis-mcp)"
+              WEBUNTIS_PASSWORD="${{ secrets.WEBUNTIS_PASSWORD }}" \
+              MCP_COMMAND="/app/.venv/bin/python" \
+              MCP_ARGS="-m untis_mcp.server" \
+              MCP_STARTUP_TIMEOUT_SECONDS="60"
+          echo "✓ Backend environment variables configured (using Docker-installed untis-mcp with 60s timeout)"
 
       - name: Restart Backend
         run: |
