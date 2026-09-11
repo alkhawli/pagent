@@ -40,8 +40,8 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
-      - name: Check code formatting (ruff)
-        run: uv run ruff check .
+      - name: Lint with ruff
+        run: uv run --with ruff ruff check .
         continue-on-error: true
 
   # Lint and test frontend
