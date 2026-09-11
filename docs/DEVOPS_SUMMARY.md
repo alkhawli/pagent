@@ -6,7 +6,7 @@
 **File**: `.github/workflows/ci-cd.yml`
 
 **Triggers**:
-- Push to master → Full deployment
+- Push to main → Full deployment
 - Pull requests → Quality checks only
 - Manual dispatch → On-demand deployment
 
@@ -15,13 +15,13 @@
    - Backend: pytest, ruff linting
    - Frontend: oxlint, build verification
    
-2. **Build & Push** (On master only)
+2. **Build & Push** (On main only)
    - Docker buildx for AMD64
    - Push to Azure Container Registry
    - Tags: `latest` + commit SHA
    - GitHub Actions cache for faster builds
 
-3. **Deploy** (On master only)
+3. **Deploy** (On main only)
    - Restart Azure Web Apps
    - Health checks (60s timeout)
    - Deployment summary
@@ -63,7 +63,7 @@
 ## 🔄 Deployment Flow
 
 ```
-git push origin master
+git push origin main
   ↓
 GitHub Actions triggers
   ↓
@@ -145,4 +145,4 @@ just kv-set-secret AZURE-FOUNDRY-API-KEY "..."
 - ✅ Zero-touch deployment
 - ✅ Documentation
 
-**Everything is now automated. Push to master = deployed to production.**
+**Everything is now automated. Push to main = deployed to production.**

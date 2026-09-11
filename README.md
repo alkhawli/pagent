@@ -59,7 +59,7 @@ API_KEY=your-api-key-here
 
 **Automated CI/CD via GitHub Actions** 🚀
 
-Every push to `master` triggers:
+Every push to `main` triggers:
 1. Quality checks (tests, linting)
 2. Docker image builds
 3. Push to Azure Container Registry

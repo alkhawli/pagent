@@ -38,7 +38,7 @@ The output should look like:
 ## Workflow Triggers
 
 The CI/CD pipeline runs on:
-- **Push to master**: Full deployment (quality checks → build → deploy)
+- **Push to main**: Full deployment (quality checks → build → deploy)
 - **Pull requests**: Quality checks only (no deployment)
 - **Manual**: `workflow_dispatch` (Actions tab → Run workflow)
 
@@ -55,13 +55,13 @@ The CI/CD pipeline runs on:
 - Lint with oxlint
 - Build check
 
-### 3. Build & Push (master only)
+### 3. Build & Push (main only)
 - Build Docker images for linux/amd64
 - Push to Azure Container Registry
 - Tag with `latest` and commit SHA
 - Uses GitHub Actions cache for faster builds
 
-### 4. Deploy (master only)
+### 4. Deploy (main only)
 - Restart Azure Web Apps
 - Wait 60s for startup
 - Health check backend and frontend
