@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -19,9 +20,12 @@ class McpTool(BaseModel):
 class McpClient:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._session_lock = asyncio.Lock()
+        self._current_session: ClientSession | None = None
+        self._stdio_exit_stack: list[Any] = []
 
     async def list_tools(self) -> list[McpTool]:
-        async with self._session() as session:
+        async with self._get_session() as session:
             response = await session.list_tools()
             return [
                 McpTool(
@@ -33,37 +37,39 @@ class McpClient:
             ]
 
     async def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
-        async with self._session() as session:
+        async with self._get_session() as session:
             response = await session.call_tool(name, arguments or {})
             return response.model_dump(mode="json")
 
-    def _session(self):
+    @asynccontextmanager
+    async def _get_session(self) -> AsyncGenerator[ClientSession, None]:
+        """Get or create a session for this operation. Creates a fresh session each time."""
         server = StdioServerParameters(
             command=self._settings.mcp_command,
             args=self._settings.mcp_arg_list,
             env=self._settings.mcp_env,
         )
-        return _InitializedSession(server, self._settings.mcp_startup_timeout_seconds)
 
+        stdio_context = stdio_client(server)
+        session_context = None
+        session = None
 
-class _InitializedSession:
-    def __init__(self, server: StdioServerParameters, timeout: float) -> None:
-        self._server = server
-        self._timeout = timeout
-        self._stdio_context: Any = None
-        self._session_context: Any = None
-        self._session: ClientSession | None = None
+        try:
+            read_stream, write_stream = await stdio_context.__aenter__()
+            session_context = ClientSession(read_stream, write_stream)
+            session = await session_context.__aenter__()
+            await asyncio.wait_for(session.initialize(), timeout=self._settings.mcp_startup_timeout_seconds)
+            yield session
+        finally:
+            # Clean up in reverse order, suppressing cancel scope errors
+            if session_context is not None:
+                try:
+                    await session_context.__aexit__(None, None, None)
+                except (RuntimeError, Exception):
+                    pass
 
-    async def __aenter__(self) -> ClientSession:
-        self._stdio_context = stdio_client(self._server)
-        read_stream, write_stream = await self._stdio_context.__aenter__()
-        self._session_context = ClientSession(read_stream, write_stream)
-        self._session = await self._session_context.__aenter__()
-        await asyncio.wait_for(self._session.initialize(), timeout=self._timeout)
-        return self._session
-
-    async def __aexit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
-        if self._session_context is not None:
-            await self._session_context.__aexit__(exc_type, exc, traceback)
-        if self._stdio_context is not None:
-            await self._stdio_context.__aexit__(exc_type, exc, traceback)
+            if stdio_context is not None:
+                try:
+                    await stdio_context.__aexit__(None, None, None)
+                except (RuntimeError, Exception):
+                    pass
