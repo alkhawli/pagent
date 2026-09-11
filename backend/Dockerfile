@@ -20,8 +20,12 @@ COPY app ./app
 
 RUN uv sync --frozen --no-dev
 
-# Create a wrapper script for uvx that ensures git is in PATH
-RUN echo '#!/bin/sh\nexport PATH="/usr/bin:$PATH"\nexec /root/.cargo/bin/uvx "$@"' > /usr/local/bin/uvx && chmod +x /usr/local/bin/uvx
+# Clone and install untis-mcp directly in the image
+RUN git clone https://github.com/kohlsalem/untis-mcp.git /tmp/untis-mcp && \
+    cd /tmp/untis-mcp && \
+    uv pip install --system . && \
+    cd / && \
+    rm -rf /tmp/untis-mcp
 
 EXPOSE 8000
 
