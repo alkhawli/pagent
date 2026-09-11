@@ -1,9 +1,15 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { useDashboard } from '../context/DashboardContext'
 import { Sidebar } from './Sidebar'
 
 export function Layout() {
   const { snapshot, isRefreshing, error, refresh } = useDashboard()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    sessionStorage.clear()
+    navigate('/login')
+  }
 
   return (
     <div className="flex h-screen bg-slate-100">
@@ -18,14 +24,23 @@ export function Layout() {
               {snapshot ? `Updated ${new Date(snapshot.generated_at).toLocaleString()}` : 'Loading…'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            disabled={isRefreshing}
-            className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-50"
-          >
-            {isRefreshing ? 'Refreshing…' : 'Refresh now'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              disabled={isRefreshing}
+              className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {isRefreshing ? 'Refreshing…' : 'Refresh now'}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-slate-200 hover:bg-red-50"
+            >
+              Logout
+            </button>
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto px-6 py-6">
           {error && (

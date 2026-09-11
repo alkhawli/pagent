@@ -3,8 +3,15 @@ import type { ChatResponse, DashboardSnapshot } from './types'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8020'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const apiKey = sessionStorage.getItem('apiKey')
+  const headers: HeadersInit = { 'Content-Type': 'application/json' }
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...init,
   })
   if (!response.ok) {

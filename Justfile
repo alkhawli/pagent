@@ -1,8 +1,62 @@
 backend_port := "8020"
 frontend_port := "5173"
 
-# Install backend (uv) and frontend (npm) dependencies
+# ============================================================================
+# Docker Commands (Cross-platform: macOS, Linux, Windows)
+# ============================================================================
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# Quick setup: Build and start Docker containers
+setup: docker-up
+
+# Build Docker images
+docker-build:
+    docker compose build
+
+# Start containers in background (build if needed, install deps first)
+docker-up: docker-build
+    docker compose up -d
+    @echo "✓ Containers started!"
+    @echo "Backend:  http://localhost:{{backend_port}}"
+    @echo "Frontend: http://localhost:{{frontend_port}}"
+
+# Stop containers
+docker-down:
+    docker compose down
+
+# Stop and remove containers with volumes
+docker-clean:
+    docker compose down -v
+
+# View container logs
+docker-logs:
+    docker compose logs -f
+
+# Restart containers
+docker-restart:
+    docker compose restart
+
+# Check container status
+docker-status:
+    docker compose ps
+
+# ============================================================================
+# Local Development (Without Docker)
+# ============================================================================
+
+# Install backend (uv) and frontend (npm) dependencies (macOS/Linux)
 install:
+    #!/usr/bin/env bash
+    echo "Installing backend dependencies (uv sync)..."
+    cd backend && uv sync && cd ..
+    echo "Installing frontend dependencies (npm install)..."
+    cd frontend && npm install
+
+# Install dependencies (Windows)
+install-win:
     #!powershell.exe -NoProfile
     Write-Host "Installing backend dependencies (uv sync)..."
     Push-Location backend
@@ -13,13 +67,38 @@ install:
     npm install
     Pop-Location
 
-# Start backend (FastAPI) and frontend (Vite) in the background
+# Start backend (FastAPI) and frontend (Vite) in the background (macOS/Linux)
 up:
+    #!/usr/bin/env bash
+    mkdir -p .run
+
+    if [ -f .run/backend.pid ]; then
+        echo "Backend already running (or stale .run/backend.pid). Run 'just down' first."
+    else
+        cd backend
+        nohup uv run uvicorn app.main:app --host 127.0.0.1 --port {{backend_port}} > ../.run/backend.log 2>&1 &
+        echo $! > ../.run/backend.pid
+        cd ..
+        echo "Backend started (PID $(cat .run/backend.pid)) at http://127.0.0.1:{{backend_port}}"
+    fi
+
+    if [ -f .run/frontend.pid ]; then
+        echo "Frontend already running (or stale .run/frontend.pid). Run 'just down' first."
+    else
+        cd frontend
+        nohup npm run dev > ../.run/frontend.log 2>&1 &
+        echo $! > ../.run/frontend.pid
+        cd ..
+        echo "Frontend started (PID $(cat .run/frontend.pid)) at http://127.0.0.1:{{frontend_port}}"
+    fi
+
+# Start backend and frontend (Windows)
+up-win:
     #!powershell.exe -NoProfile
     New-Item -ItemType Directory -Force -Path .run | Out-Null
 
     if (Test-Path .run/backend.pid) {
-        Write-Host "Backend already running (or stale .run/backend.pid). Run 'just down' first."
+        Write-Host "Backend already running (or stale .run/backend.pid). Run 'just down-win' first."
     } else {
         $backend = Start-Process -FilePath "uv" -ArgumentList "run","uvicorn","app.main:app","--host","127.0.0.1","--port","{{backend_port}}" -WorkingDirectory "backend" -PassThru -WindowStyle Hidden
         Set-Content -Path .run/backend.pid -Value $backend.Id
@@ -27,15 +106,33 @@ up:
     }
 
     if (Test-Path .run/frontend.pid) {
-        Write-Host "Frontend already running (or stale .run/frontend.pid). Run 'just down' first."
+        Write-Host "Frontend already running (or stale .run/frontend.pid). Run 'just down-win' first."
     } else {
         $frontend = Start-Process -FilePath "cmd.exe" -ArgumentList "/c","npm","run","dev" -WorkingDirectory "frontend" -PassThru -WindowStyle Hidden
         Set-Content -Path .run/frontend.pid -Value $frontend.Id
         Write-Host "Frontend started (PID $($frontend.Id)) at http://127.0.0.1:{{frontend_port}}"
     }
 
-# Stop backend and frontend started by `just up`
+# Stop backend and frontend (macOS/Linux)
 down:
+    #!/usr/bin/env bash
+    for name in backend frontend; do
+        pidfile=".run/$name.pid"
+        if [ -f "$pidfile" ]; then
+            pid=$(cat "$pidfile")
+            if kill -0 "$pid" 2>/dev/null; then
+                kill "$pid" && echo "Stopped $name (PID $pid)"
+            else
+                echo "$name process $pid not running"
+            fi
+            rm "$pidfile"
+        else
+            echo "$name is not running (no $pidfile)"
+        fi
+    done
+
+# Stop backend and frontend (Windows)
+down-win:
     #!powershell.exe -NoProfile
     foreach ($name in "backend","frontend") {
         $pidFile = ".run/$name.pid"
@@ -53,15 +150,28 @@ down:
         }
     }
 
-# Run backend tests
+# Run backend tests (macOS/Linux)
 test:
+    #!/usr/bin/env bash
+    cd backend && uv run pytest
+
+# Run backend tests (Windows)
+test-win:
     #!powershell.exe -NoProfile
     Push-Location backend
     uv run pytest
     Pop-Location
 
-# Check whether backend/frontend are reachable
+# Check whether backend/frontend are reachable (macOS/Linux)
 status:
+    #!/usr/bin/env bash
+    echo "Checking backend..."
+    curl -f -s http://127.0.0.1:{{backend_port}}/health && echo "Backend: healthy (http://127.0.0.1:{{backend_port}})" || echo "Backend: not reachable"
+    echo "Checking frontend..."
+    curl -f -s -o /dev/null http://127.0.0.1:{{frontend_port}} && echo "Frontend: reachable (http://127.0.0.1:{{frontend_port}})" || echo "Frontend: not reachable"
+
+# Check status (Windows)
+status-win:
     #!powershell.exe -NoProfile
     try {
         $health = Invoke-RestMethod "http://127.0.0.1:{{backend_port}}/health" -TimeoutSec 3
@@ -220,6 +330,26 @@ kv-set-secret NAME VALUE:
     set -e
     KV_NAME=$(cd terraform && terraform output -raw key_vault_name)
     az keyvault secret set --vault-name $KV_NAME --name "{{NAME}}" --value "{{VALUE}}"
+
+# Fix MCP configuration in Azure Key Vault (for deployed app)
+fix-mcp-azure:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Updating MCP configuration in Azure Key Vault..."
+    KV_NAME=$(cd terraform && terraform output -raw key_vault_name)
+    echo "Key Vault: $KV_NAME"
+    echo "Setting MCP_COMMAND..."
+    az keyvault secret set --vault-name "$KV_NAME" --name "MCP-COMMAND" --value "/app/.venv/bin/python" --output none
+    echo "Setting MCP_ARGS..."
+    az keyvault secret set --vault-name "$KV_NAME" --name "MCP-ARGS" --value "-m untis_mcp.server" --output none
+    echo "Setting MCP_STARTUP_TIMEOUT_SECONDS..."
+    az keyvault secret set --vault-name "$KV_NAME" --name "MCP-STARTUP-TIMEOUT-SECONDS" --value "60" --output none
+    echo ""
+    echo "✅ MCP configuration updated!"
+    echo "Restarting backend to apply changes..."
+    just restart-backend
+    echo ""
+    echo "Check logs with: just logs-backend"
 
 # Get a secret from Key Vault
 kv-get-secret NAME:

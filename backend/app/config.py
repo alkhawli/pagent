@@ -11,8 +11,9 @@ class Settings(BaseSettings):
     app_name: str = "PAGENT Untis Chatbot"
     app_host: str = "127.0.0.1"
     app_port: int = 8020
-    mcp_command: str = "uvx"
-    mcp_args: str = "--from git+https://github.com/kohlsalem/untis-mcp --with mcp<2 untis-mcp"
+    api_key: str = ""
+    mcp_command: str = "/app/.venv/bin/python"
+    mcp_args: str = "-m untis_mcp.server"
     mcp_startup_timeout_seconds: float = Field(default=30, gt=0)
     webuntis_server: str | None = None
     webuntis_school: str | None = None

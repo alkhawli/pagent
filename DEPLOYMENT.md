@@ -1,399 +1,170 @@
-# PAGENT Azure Deployment Guide
+# Azure Deployment Guide
 
-Complete automation for deploying PAGENT backend and frontend to Azure Web Apps with Docker.
+Deploy PAGENT to Azure App Service with automated infrastructure provisioning.
 
-## Quick Start
+## Prerequisites
 
-### 1. Prerequisites
+- Azure CLI installed and authenticated: `az login`
+- Docker installed (for building images)
+- Terraform installed
+- `just` command runner
 
-```bash
-# Ensure you're logged in
-az login
-
-# Verify authentication
-az account show
-```
-
-### 2. Configure Deployment
+## Quick Deploy
 
 ```bash
-# Copy and edit Terraform variables
-cd terraform
-cp terraform.tfvars.example terraform.tfvars
+# 1. Initialize and create infrastructure
+just tf-init
+just tf-apply
 
-# Edit terraform.tfvars - REQUIRED CHANGES:
-# - acr_name: Must be globally unique, alphanumeric only (e.g., "pagentacr12345")
-# - keyvault_name: Must be globally unique, 3-24 chars (e.g., "pagent-kv-12345")
-```
+# 2. Set secrets in Key Vault
+just kv-set-secret WEBUNTIS-USER "your-username"
+just kv-set-secret WEBUNTIS-PASSWORD "your-password"
+just kv-set-secret AZURE-FOUNDRY-API-KEY "your-api-key"
+just kv-set-secret API-KEY "EvncjKw_nyFiVM6rmYt-fud9v-XXHMheWsLU1EhqJug"
 
-### 3. Deploy Infrastructure and Application
-
-```bash
-# One-command setup (creates all Azure resources)
-just azure-setup
-
-# After infrastructure is ready, deploy the application
+# 3. Build and deploy
 just deploy
 
-# Or do it all in one step
-just azure-deploy
+# 4. Check status
+just status-azure
 ```
-
-### 4. Access Your Application
-
-```bash
-# Show deployment info
-just azure-info
-
-# Open in browser
-just open-frontend-azure
-just open-backend-azure
-```
-
-## Available Commands
-
-### Infrastructure Management
-
-```bash
-just tf-init              # Initialize Terraform
-just tf-plan              # Preview infrastructure changes
-just tf-apply             # Create/update infrastructure
-just tf-destroy           # Delete all Azure resources
-just tf-output            # Show all Terraform outputs
-```
-
-### Docker Image Management
-
-```bash
-just build-backend        # Build and push backend image
-just build-frontend       # Build and push frontend image
-just build-all           # Build and push both images
-just build-all v1.0.0    # Build with specific tag
-
-just acr-repos           # List all ACR repositories
-just acr-tags-backend    # List backend image tags
-just acr-tags-frontend   # List frontend image tags
-```
-
-### Application Deployment
-
-```bash
-just deploy              # Full deployment (build + push + restart)
-just deploy v1.0.0       # Deploy with specific tag
-just azure-deploy        # Full deployment including infrastructure update
-
-just restart-backend     # Restart backend web app
-just restart-frontend    # Restart frontend web app
-just restart-all         # Restart both web apps
-```
-
-### Monitoring and Troubleshooting
-
-```bash
-just status-azure        # Check both web apps status
-just health-azure        # Health check both apps
-just azure-info          # Show deployment details
-
-just logs-backend        # Tail backend logs (Ctrl+C to exit)
-just logs-frontend       # Tail frontend logs (Ctrl+C to exit)
-
-just backend-url         # Print backend URL
-just frontend-url        # Print frontend URL
-```
-
-### Key Vault Secrets Management
-
-```bash
-just kv-set-secret api-key "your-secret-value"
-just kv-get-secret api-key
-just kv-list
-```
-
-To use Key Vault secrets in your app, reference them in `terraform.tfvars`:
-
-```hcl
-backend_env_vars = {
-  "API_KEY" = "@Microsoft.KeyVault(SecretUri=https://pagent-kv-12345.vault.azure.net/secrets/api-key/)"
-}
-```
-
-Then apply: `just tf-apply`
 
 ## Configuration
 
-### Environment Variables
-
-Edit `terraform/terraform.tfvars` to configure:
-
-**Backend environment variables:**
-```hcl
-backend_env_vars = {
-  "ENVIRONMENT"    = "production"
-  "PORT"           = "8000"
-  "DATABASE_URL"   = "your-database-url"
-  "API_KEY"        = "your-api-key"  # Or use Key Vault reference
-}
-```
-
-**Frontend environment variables:**
-```hcl
-frontend_env_vars = {
-  "CUSTOM_VAR" = "value"
-  # API_BASE_URL is automatically set to backend URL
-}
-```
-
-After changing variables:
-```bash
-just tf-apply
-just restart-all
-```
-
-### Scaling
-
-**Change App Service SKU:**
+### terraform.tfvars
 
 Edit `terraform/terraform.tfvars`:
+
 ```hcl
-app_service_sku = "P1V2"  # or B1, B2, P2V2, etc.
+# Must be globally unique
+acr_name = "pagentacr12345"
+keyvault_name = "pagent-kv-12345"
+
+# Adjust as needed
+app_service_sku = "B1"  # Basic tier
+location = "westeurope"
 ```
 
-Then apply:
-```bash
-just tf-apply
-```
+### Required Secrets
 
-## Common Workflows
-
-### Initial Deployment
+Store in Azure Key Vault:
 
 ```bash
-# 1. Configure variables
-cd terraform && cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
+# WebUntis
+WEBUNTIS-SERVER
+WEBUNTIS-SCHOOL
+WEBUNTIS-USER
+WEBUNTIS-PASSWORD
 
-# 2. Setup infrastructure and deploy
-just azure-setup
-just deploy
+# Azure AI
+AZURE-FOUNDRY-ENDPOINT
+AZURE-FOUNDRY-API-KEY
+AZURE-FOUNDRY-MODEL-DEPLOYMENT
+AZURE-FOUNDRY-API-VERSION
 
-# 3. Verify
-just azure-info
-just health-azure
-```
+# Authentication
+API-KEY
 
-### Update Application Code
-
-```bash
-# After making code changes
-just deploy
-
-# Or with a specific version tag
-just deploy v1.0.1
-```
-
-### Update Configuration Only
-
-```bash
-# Edit terraform/terraform.tfvars
-just tf-apply
-just restart-all
-```
-
-### Add/Update Secrets
-
-```bash
-# Add secret to Key Vault
-just kv-set-secret "db-password" "super-secret-password"
-
-# Reference in terraform.tfvars
-backend_env_vars = {
-  "DATABASE_PASSWORD" = "@Microsoft.KeyVault(SecretUri=https://your-kv.vault.azure.net/secrets/db-password/)"
-}
-
-# Apply changes
-just tf-apply
-```
-
-### View Application Logs
-
-```bash
-# Real-time backend logs
-just logs-backend
-
-# Real-time frontend logs
-just logs-frontend
-```
-
-### Rollback to Previous Image
-
-```bash
-# List available tags
-just acr-tags-backend
-just acr-tags-frontend
-
-# Deploy specific version
-just deploy v1.0.0
+# App Settings
+APP-NAME
+APP-HOST
+APP-PORT
+MCP-COMMAND
+MCP-ARGS
+MCP-STARTUP-TIMEOUT-SECONDS
 ```
 
 ## Architecture
 
+- **Azure Container Registry** - Docker image storage
+- **Azure App Service (Linux)** - Backend and frontend hosting
+- **Azure Key Vault** - Secret management
+- **Terraform** - Infrastructure as code
+
+## Common Commands
+
+```bash
+# Deploy
+just deploy              # Build, push, restart
+
+# Monitor
+just status-azure        # Check app status
+just logs-backend        # View backend logs
+just logs-frontend       # View frontend logs
+just health-azure        # Health check
+
+# Manage
+just restart-all         # Restart both apps
+just restart-backend     # Restart backend only
+just restart-frontend    # Restart frontend only
+
+# Info
+just azure-info          # Show deployment info
+just acr-repos           # List ACR repositories
+just acr-tags-backend    # List backend tags
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Azure Resource Group                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌─────────────────────┐         ┌──────────────────────┐  │
-│  │  Container Registry │         │     Key Vault        │  │
-│  │  (ACR)              │         │  - ACR credentials   │  │
-│  │  - backend:latest   │         │  - App secrets       │  │
-│  │  - frontend:latest  │         │                      │  │
-│  └─────────────────────┘         └──────────────────────┘  │
-│           │                                  ▲               │
-│           │ Pull images                      │ Read secrets │
-│           ▼                                  │               │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │          App Service Plan (Linux)                   │   │
-│  ├─────────────────────┬───────────────────────────────┤   │
-│  │  Backend Web App    │    Frontend Web App           │   │
-│  │  - FastAPI          │    - React + Nginx            │   │
-│  │  - Port 8000        │    - Port 80                  │   │
-│  │  - /health endpoint │    - Serves static files      │   │
-│  │  - Managed Identity ├───▶ API_BASE_URL configured   │   │
-│  └─────────────────────┴───────────────────────────────┘   │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Costs (Approximate)
-
-- **Container Registry (Basic)**: ~$5/month
-- **App Service Plan B1**: ~$13/month
-- **Key Vault**: ~$0.03/10k operations
-
-**Total: ~$18/month for Basic tier**
-
-For production:
-- **App Service Plan P1V2**: ~$73/month (includes auto-scaling, better performance)
-- **Total: ~$78/month**
 
 ## Troubleshooting
 
-### "ACR name already exists"
-The ACR name must be globally unique across all Azure. Try adding random numbers:
-```hcl
-acr_name = "pagentacr47829"
-```
+### Deployment fails with "ImagePullFailure"
 
-### "Key Vault name already exists"
-Similar issue - add a unique suffix:
-```hcl
-keyvault_name = "pagent-kv-47829"
-```
-
-### Web App not starting
+Ensure images are built for AMD64:
 ```bash
-# Check logs
+docker buildx build --platform linux/amd64 ...
+```
+
+### Container won't start
+
+Check logs:
+```bash
 just logs-backend
-just logs-frontend
-
-# Verify images exist
-just acr-repos
-
-# Check web app status
-just status-azure
+az webapp log tail --name pagent-backend --resource-group pagent-rg
 ```
 
-### Health check failing
+### 503 Service Unavailable
+
+- Verify Key Vault access policy
+- Check environment variables are loading
+- Increase startup timeout if needed
+
+### MCP connection errors
+
+If you see "No module named untis_mcp.__main__" or MCP connection failures:
+
 ```bash
-# Test backend health endpoint
-curl $(just backend-url)/health
-
-# Check backend logs
-just logs-backend
+# Fix MCP configuration in Azure Key Vault
+just fix-mcp-azure
 ```
 
-### Cannot connect to backend from frontend
-The frontend automatically gets `API_BASE_URL` set to the backend URL. Verify:
+This updates the MCP command to use the correct entry point (`untis_mcp.server`) and restarts the backend.
+
+Other checks:
+- Verify WebUntis credentials in Key Vault
+- Check MCP_STARTUP_TIMEOUT_SECONDS (default: 60)
+- Review container logs for MCP errors
+
+## Costs
+
+Estimated monthly cost (B1 tier):
+- 2x App Service B1: ~$27/month
+- Azure Container Registry Basic: ~$5/month
+- Key Vault: <$1/month
+- **Total: ~$33/month**
+
+Scale up to P1V2 ($78/month per instance) for production.
+
+## URLs
+
+After deployment:
+- Frontend: `https://pagent-frontend.azurewebsites.net`
+- Backend: `https://pagent-backend.azurewebsites.net`
+- Swagger: `https://pagent-backend.azurewebsites.net/docs`
+
+## Cleanup
+
+To destroy all Azure resources:
 ```bash
-just azure-info
+just tf-destroy
 ```
 
-## Security Best Practices
-
-1. **Never commit** `terraform.tfvars` (it's in `.gitignore`)
-2. **Use Key Vault** for all sensitive secrets
-3. **Rotate credentials** regularly:
-   ```bash
-   az acr credential renew --name <acr-name> --password-name password
-   ```
-4. **Enable diagnostic logs** (for production):
-   ```bash
-   just logs-backend > backend-$(date +%Y%m%d).log &
-   ```
-5. **Use Managed Identities** (already configured) instead of connection strings where possible
-
-## CI/CD Integration
-
-### GitHub Actions
-
-Create `.github/workflows/azure-deploy.yml`:
-
-```yaml
-name: Deploy to Azure
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-env:
-  TAG: ${{ github.sha }}
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Install just
-        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
-      
-      - name: Deploy
-        run: |
-          just tf-apply -auto-approve
-          just deploy ${{ env.TAG }}
-```
-
-### Azure DevOps
-
-Create `azure-pipelines.yml`:
-
-```yaml
-trigger:
-  - main
-
-pool:
-  vmImage: 'ubuntu-latest'
-
-steps:
-- task: AzureCLI@2
-  inputs:
-    azureSubscription: 'your-service-connection'
-    scriptType: 'bash'
-    scriptLocation: 'inlineScript'
-    inlineScript: |
-      curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
-      just tf-apply -auto-approve
-      just deploy $(Build.SourceVersion)
-```
-
-## Support
-
-- **Terraform Issues**: [terraform/README.md](terraform/README.md)
-- **Azure CLI**: Run `az --help` or check [Azure CLI docs](https://docs.microsoft.com/en-us/cli/azure/)
-- **Just commands**: Run `just --list` to see all available commands
+**Warning:** This will delete everything, including Key Vault data.

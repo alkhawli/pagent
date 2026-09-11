@@ -20,11 +20,10 @@ COPY app ./app
 
 RUN uv sync --frozen --no-dev
 
-# Clone and install untis-mcp directly in the image
+# Clone and install untis-mcp into the venv
 RUN git clone https://github.com/kohlsalem/untis-mcp.git /tmp/untis-mcp && \
-    cd /tmp/untis-mcp && \
-    uv pip install --system . && \
-    cd / && \
+    cd /app && \
+    uv pip install /tmp/untis-mcp && \
     rm -rf /tmp/untis-mcp
 
 EXPOSE 8000

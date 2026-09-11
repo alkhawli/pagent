@@ -4,9 +4,10 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
@@ -38,6 +39,9 @@ async def lifespan(app: FastAPI):
         scheduler.shutdown(wait=False)
 
 
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
 
@@ -59,14 +63,14 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/dashboard")
+    @app.get("/dashboard", dependencies=[Depends(verify_api_key)])
     async def dashboard(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
         snapshot = load_latest_snapshot(settings)
         if snapshot is None:
             raise HTTPException(status_code=503, detail="Dashboard data is not ready yet. Try again shortly.")
         return snapshot
 
-    @app.post("/dashboard/refresh")
+    @app.post("/dashboard/refresh", dependencies=[Depends(verify_api_key)])
     async def refresh_dashboard(
         client: McpClient = Depends(get_mcp_client),
         settings: Settings = Depends(get_settings),
@@ -78,14 +82,14 @@ def create_app() -> FastAPI:
         save_snapshot(settings, data)
         return data
 
-    @app.get("/tools")
+    @app.get("/tools", dependencies=[Depends(verify_api_key)])
     async def list_tools(client: McpClient = Depends(get_mcp_client)) -> dict[str, Any]:
         try:
             return {"tools": [tool.model_dump(mode="json") for tool in await client.list_tools()]}
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"MCP connection failed: {exc}") from exc
 
-    @app.post("/tools/{tool_name}")
+    @app.post("/tools/{tool_name}", dependencies=[Depends(verify_api_key)])
     async def call_tool(
         tool_name: str,
         request: ToolCallRequest,
@@ -96,7 +100,7 @@ def create_app() -> FastAPI:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"MCP tool call failed: {exc}") from exc
 
-    @app.post("/chat")
+    @app.post("/chat", dependencies=[Depends(verify_api_key)])
     async def chat(
         request: ChatRequest,
         client: McpClient = Depends(get_mcp_client),
@@ -116,6 +120,16 @@ def create_app() -> FastAPI:
 
 def get_mcp_client(settings: Settings = Depends(get_settings)) -> McpClient:
     return McpClient(settings)
+
+
+def verify_api_key(
+    api_key: str = Security(api_key_header),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing API key")
+    if not settings.api_key or api_key != settings.api_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 app = create_app()
