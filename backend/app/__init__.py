@@ -1,0 +1,1 @@
+"""PAGENT FastAPI application."""
