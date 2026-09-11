@@ -38,36 +38,32 @@ log_info "Logging in to Azure Container Registry..."
 az acr login --name ${ACR_LOGIN_SERVER%%.*}
 
 build_and_push_backend() {
-    log_info "Building backend Docker image..."
-    docker build -t ${ACR_LOGIN_SERVER}/pagent-backend:${TAG} \
+    log_info "Building backend Docker image for linux/amd64..."
+    docker buildx build --platform linux/amd64 \
+        -t ${ACR_LOGIN_SERVER}/pagent-backend:${TAG} \
         -t ${ACR_LOGIN_SERVER}/pagent-backend:latest \
         -f backend/Dockerfile \
+        --push \
         backend/
 
-    log_info "Pushing backend image to ACR..."
-    docker push ${ACR_LOGIN_SERVER}/pagent-backend:${TAG}
-    docker push ${ACR_LOGIN_SERVER}/pagent-backend:latest
-
-    log_info "Backend image pushed successfully!"
+    log_info "Backend image built and pushed successfully!"
 }
 
 build_and_push_frontend() {
-    log_info "Building frontend Docker image..."
+    log_info "Building frontend Docker image for linux/amd64..."
 
     # Get backend URL from environment or use default
     BACKEND_URL=${BACKEND_URL:-"https://pagent-backend.azurewebsites.net"}
 
-    docker build -t ${ACR_LOGIN_SERVER}/pagent-frontend:${TAG} \
+    docker buildx build --platform linux/amd64 \
+        -t ${ACR_LOGIN_SERVER}/pagent-frontend:${TAG} \
         -t ${ACR_LOGIN_SERVER}/pagent-frontend:latest \
         --build-arg VITE_API_BASE_URL=${BACKEND_URL} \
         -f frontend/Dockerfile \
+        --push \
         frontend/
 
-    log_info "Pushing frontend image to ACR..."
-    docker push ${ACR_LOGIN_SERVER}/pagent-frontend:${TAG}
-    docker push ${ACR_LOGIN_SERVER}/pagent-frontend:latest
-
-    log_info "Frontend image pushed successfully!"
+    log_info "Frontend image built and pushed successfully!"
 }
 
 case $COMPONENT in

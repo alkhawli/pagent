@@ -101,13 +101,12 @@ resource "azurerm_linux_web_app" "backend" {
   tags                = var.tags
 
   site_config {
-    always_on = true
+    always_on                 = true
+    acr_use_managed_identity_credentials = true
 
     application_stack {
-      docker_registry_url      = "https://${azurerm_container_registry.acr.login_server}"
-      docker_registry_username = azurerm_container_registry.acr.admin_username
-      docker_registry_password = azurerm_container_registry.acr.admin_password
-      docker_image_name        = "${var.backend_image_name}:${var.backend_image_tag}"
+      docker_registry_url = "https://${azurerm_container_registry.acr.login_server}"
+      docker_image_name   = "${var.backend_image_name}:${var.backend_image_tag}"
     }
 
     health_check_path                 = "/health"
@@ -138,6 +137,13 @@ resource "azurerm_key_vault_access_policy" "backend" {
   ]
 }
 
+# ACR Pull Role Assignment for Backend
+resource "azurerm_role_assignment" "backend_acr_pull" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_linux_web_app.backend.identity[0].principal_id
+}
+
 # Frontend Web App
 resource "azurerm_linux_web_app" "frontend" {
   name                = "${var.project_name}-frontend"
@@ -148,13 +154,12 @@ resource "azurerm_linux_web_app" "frontend" {
   tags                = var.tags
 
   site_config {
-    always_on = true
+    always_on                 = true
+    acr_use_managed_identity_credentials = true
 
     application_stack {
-      docker_registry_url      = "https://${azurerm_container_registry.acr.login_server}"
-      docker_registry_username = azurerm_container_registry.acr.admin_username
-      docker_registry_password = azurerm_container_registry.acr.admin_password
-      docker_image_name        = "${var.frontend_image_name}:${var.frontend_image_tag}"
+      docker_registry_url = "https://${azurerm_container_registry.acr.login_server}"
+      docker_image_name   = "${var.frontend_image_name}:${var.frontend_image_tag}"
     }
   }
 
@@ -181,4 +186,11 @@ resource "azurerm_key_vault_access_policy" "frontend" {
   secret_permissions = [
     "Get", "List"
   ]
+}
+
+# ACR Pull Role Assignment for Frontend
+resource "azurerm_role_assignment" "frontend_acr_pull" {
+  scope                = azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_linux_web_app.frontend.identity[0].principal_id
 }

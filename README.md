@@ -49,6 +49,12 @@ A parent assistant chatbot for WebUntis, featuring AI-powered Q&A and automated 
 just tf-init
 just tf-apply
 
+# Set secrets in Key Vault (first time only)
+just kv-set-secret WEBUNTIS-USER "your-username"
+just kv-set-secret WEBUNTIS-PASSWORD "your-password"
+just kv-set-secret AZURE-FOUNDRY-API-KEY "your-api-key"
+just kv-set-secret API-KEY "your-api-key"
+
 # Deploy application
 just deploy
 
@@ -59,6 +65,11 @@ just status-azure
 **Live URLs:**
 - Frontend: https://pagent-frontend.azurewebsites.net
 - Backend: https://pagent-backend.azurewebsites.net
+
+**Azure Configuration:**
+- Images built for `linux/amd64` platform
+- ACR authentication via managed identity (automatic)
+- Always uses `latest` tag
 
 ## Configuration
 
