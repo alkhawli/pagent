@@ -1,0 +1,41 @@
+# Copy this file to terraform.tfvars and customize
+
+project_name        = "pagent"
+resource_group_name = "pagent-rg"
+location            = "westeurope"
+
+# Must be globally unique, alphanumeric only (no hyphens)
+acr_name = "pagentacrXXXX"
+
+# Must be globally unique, 3-24 chars
+keyvault_name = "pagent-kv-XXXX"
+
+# App Service Plan SKU
+# B1 = Basic (dev/test), P1V2 = Premium (production)
+app_service_sku = "B1"
+
+# Docker image configuration
+backend_image_name  = "pagent-backend"
+backend_image_tag   = "latest"
+frontend_image_name = "pagent-frontend"
+frontend_image_tag  = "latest"
+
+# Backend environment variables
+# You can also reference Key Vault secrets using @Microsoft.KeyVault syntax
+backend_env_vars = {
+  "ENVIRONMENT"           = "production"
+  "PORT"                  = "8000"
+  # Example of referencing a Key Vault secret:
+  # "API_KEY" = "@Microsoft.KeyVault(SecretUri=https://your-kv.vault.azure.net/secrets/api-key/)"
+}
+
+# Frontend environment variables
+frontend_env_vars = {
+  # API_BASE_URL is automatically set to the backend URL
+}
+
+tags = {
+  "Environment" = "Production"
+  "ManagedBy"   = "Terraform"
+  "Project"     = "PAGENT"
+}

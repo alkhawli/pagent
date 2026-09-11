@@ -75,3 +75,225 @@ status:
     } catch {
         Write-Host "Frontend: not reachable (http://127.0.0.1:{{frontend_port}})"
     }
+
+# ============================================================================
+# Azure Deployment Recipes
+# ============================================================================
+
+# Initialize Terraform
+tf-init:
+    cd terraform && terraform init
+
+# Plan Terraform changes
+tf-plan:
+    cd terraform && terraform plan
+
+# Apply Terraform configuration
+tf-apply:
+    cd terraform && terraform apply
+
+# Destroy all Azure resources
+tf-destroy:
+    cd terraform && terraform destroy
+
+# Show Terraform outputs
+tf-output:
+    cd terraform && terraform output
+
+# Get ACR login server
+acr-login:
+    @cd terraform && terraform output -raw acr_login_server
+
+# Get backend URL
+backend-url:
+    @cd terraform && terraform output -raw backend_url
+
+# Get frontend URL
+frontend-url:
+    @cd terraform && terraform output -raw frontend_url
+
+# Build and push backend image
+build-backend TAG="latest":
+    #!/usr/bin/env bash
+    set -e
+    export ACR_LOGIN_SERVER=$(cd terraform && terraform output -raw acr_login_server)
+    ./scripts/build-and-push.sh backend {{TAG}}
+
+# Build and push frontend image
+build-frontend TAG="latest":
+    #!/usr/bin/env bash
+    set -e
+    export ACR_LOGIN_SERVER=$(cd terraform && terraform output -raw acr_login_server)
+    export BACKEND_URL=$(cd terraform && terraform output -raw backend_url)
+    ./scripts/build-and-push.sh frontend {{TAG}}
+
+# Build and push both images
+build-all TAG="latest":
+    #!/usr/bin/env bash
+    set -e
+    export ACR_LOGIN_SERVER=$(cd terraform && terraform output -raw acr_login_server)
+    export BACKEND_URL=$(cd terraform && terraform output -raw backend_url)
+    ./scripts/build-and-push.sh all {{TAG}}
+
+# Deploy everything (build, push, restart)
+deploy TAG="latest":
+    ./scripts/deploy.sh {{TAG}}
+
+# Restart backend web app
+restart-backend:
+    #!/usr/bin/env bash
+    set -e
+    WEBAPP_NAME=$(cd terraform && terraform output -raw backend_webapp_name)
+    RG=$(cd terraform && terraform output -raw resource_group_name)
+    az webapp restart --name $WEBAPP_NAME --resource-group $RG
+
+# Restart frontend web app
+restart-frontend:
+    #!/usr/bin/env bash
+    set -e
+    WEBAPP_NAME=$(cd terraform && terraform output -raw frontend_webapp_name)
+    RG=$(cd terraform && terraform output -raw resource_group_name)
+    az webapp restart --name $WEBAPP_NAME --resource-group $RG
+
+# Restart both web apps
+restart-all: restart-backend restart-frontend
+
+# View backend logs
+logs-backend:
+    #!/usr/bin/env bash
+    set -e
+    WEBAPP_NAME=$(cd terraform && terraform output -raw backend_webapp_name)
+    RG=$(cd terraform && terraform output -raw resource_group_name)
+    az webapp log tail --name $WEBAPP_NAME --resource-group $RG
+
+# View frontend logs
+logs-frontend:
+    #!/usr/bin/env bash
+    set -e
+    WEBAPP_NAME=$(cd terraform && terraform output -raw frontend_webapp_name)
+    RG=$(cd terraform && terraform output -raw resource_group_name)
+    az webapp log tail --name $WEBAPP_NAME --resource-group $RG
+
+# Check backend status on Azure
+status-backend-azure:
+    #!/usr/bin/env bash
+    set -e
+    WEBAPP_NAME=$(cd terraform && terraform output -raw backend_webapp_name)
+    RG=$(cd terraform && terraform output -raw resource_group_name)
+    az webapp show --name $WEBAPP_NAME --resource-group $RG --query "{name:name, state:state, url:defaultHostName}"
+
+# Check frontend status on Azure
+status-frontend-azure:
+    #!/usr/bin/env bash
+    set -e
+    WEBAPP_NAME=$(cd terraform && terraform output -raw frontend_webapp_name)
+    RG=$(cd terraform && terraform output -raw resource_group_name)
+    az webapp show --name $WEBAPP_NAME --resource-group $RG --query "{name:name, state:state, url:defaultHostName}"
+
+# Check status of both Azure apps
+status-azure: status-backend-azure status-frontend-azure
+
+# List ACR repositories
+acr-repos:
+    #!/usr/bin/env bash
+    set -e
+    ACR_NAME=$(cd terraform && terraform output -raw acr_login_server | cut -d. -f1)
+    az acr repository list --name $ACR_NAME -o table
+
+# List backend image tags
+acr-tags-backend:
+    #!/usr/bin/env bash
+    set -e
+    ACR_NAME=$(cd terraform && terraform output -raw acr_login_server | cut -d. -f1)
+    az acr repository show-tags --name $ACR_NAME --repository pagent-backend -o table
+
+# List frontend image tags
+acr-tags-frontend:
+    #!/usr/bin/env bash
+    set -e
+    ACR_NAME=$(cd terraform && terraform output -raw acr_login_server | cut -d. -f1)
+    az acr repository show-tags --name $ACR_NAME --repository pagent-frontend -o table
+
+# Add a secret to Key Vault
+kv-set-secret NAME VALUE:
+    #!/usr/bin/env bash
+    set -e
+    KV_NAME=$(cd terraform && terraform output -raw key_vault_name)
+    az keyvault secret set --vault-name $KV_NAME --name "{{NAME}}" --value "{{VALUE}}"
+
+# Get a secret from Key Vault
+kv-get-secret NAME:
+    #!/usr/bin/env bash
+    set -e
+    KV_NAME=$(cd terraform && terraform output -raw key_vault_name)
+    az keyvault secret show --vault-name $KV_NAME --name "{{NAME}}" --query value -o tsv
+
+# List all Key Vault secrets
+kv-list:
+    #!/usr/bin/env bash
+    set -e
+    KV_NAME=$(cd terraform && terraform output -raw key_vault_name)
+    az keyvault secret list --vault-name $KV_NAME -o table
+
+# Open backend URL in browser
+open-backend-azure:
+    #!/usr/bin/env bash
+    BACKEND_URL=$(cd terraform && terraform output -raw backend_url)
+    open $BACKEND_URL
+
+# Open frontend URL in browser
+open-frontend-azure:
+    #!/usr/bin/env bash
+    FRONTEND_URL=$(cd terraform && terraform output -raw frontend_url)
+    open $FRONTEND_URL
+
+# Setup: Initialize and apply Terraform
+azure-setup:
+    @echo "Setting up Azure infrastructure..."
+    just tf-init
+    just tf-apply
+    @echo ""
+    @echo "✓ Infrastructure created!"
+    @echo "Next steps:"
+    @echo "  1. Run: just deploy"
+    @echo "  2. Check status: just status-azure"
+    @echo "  3. Open frontend: just open-frontend-azure"
+
+# Full deployment workflow
+azure-deploy TAG="latest":
+    @echo "Starting full deployment..."
+    just tf-apply
+    just build-all {{TAG}}
+    just restart-all
+    @echo ""
+    @echo "✓ Deployment complete!"
+    just status-azure
+
+# Health check Azure apps
+health-azure:
+    #!/usr/bin/env bash
+    set -e
+    BACKEND_URL=$(cd terraform && terraform output -raw backend_url)
+    echo "Checking backend health..."
+    curl -f -s ${BACKEND_URL}/health || echo "Backend health check failed"
+    echo ""
+    echo "Checking frontend..."
+    FRONTEND_URL=$(cd terraform && terraform output -raw frontend_url)
+    curl -f -s -o /dev/null ${FRONTEND_URL} && echo "Frontend is responding" || echo "Frontend check failed"
+
+# Show deployment info
+azure-info:
+    #!/usr/bin/env bash
+    set -e
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  PAGENT Azure Deployment Information"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Resource Group: $(cd terraform && terraform output -raw resource_group_name)"
+    echo "ACR Server:     $(cd terraform && terraform output -raw acr_login_server)"
+    echo "Key Vault:      $(cd terraform && terraform output -raw key_vault_name)"
+    echo ""
+    echo "Backend:        $(cd terraform && terraform output -raw backend_url)"
+    echo "Frontend:       $(cd terraform && terraform output -raw frontend_url)"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

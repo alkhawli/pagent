@@ -41,9 +41,16 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
 
+    # CORS configuration - allow frontend to access backend
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "https://pagent-frontend.azurewebsites.net",
+            "https://pagent-backend.azurewebsites.net",  # For testing via backend
+        ],
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
