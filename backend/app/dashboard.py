@@ -58,7 +58,11 @@ async def _lookup_id_name_map(client: McpClient, method: str) -> dict[int, str]:
 
 async def _get_students(client: McpClient) -> list[dict[str, Any]]:
     data, error = await _call_tool_json(client, "untis_get_students")
-    if error or not isinstance(data, list):
+    if error:
+        print(f"DEBUG: _get_students error: {error}")
+        return []
+    if not isinstance(data, list):
+        print(f"DEBUG: _get_students data is not a list, type={type(data)}, data={data}")
         return []
     return data
 
