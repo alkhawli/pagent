@@ -28,10 +28,13 @@ class ToolCallRequest(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    scheduler = create_scheduler(settings)
+    # Initialize in-memory cache
+    app.state.dashboard_cache = None
+    # Create scheduler with app reference for cache updates
+    scheduler = create_scheduler(settings, app)
     scheduler.start()
-    if load_latest_snapshot(settings) is None:
-        asyncio.create_task(refresh_dashboard_snapshot(settings))
+    # Trigger initial dashboard build
+    asyncio.create_task(refresh_dashboard_snapshot(settings, app))
     app.state.scheduler = scheduler
     try:
         yield
@@ -64,8 +67,8 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/dashboard", dependencies=[Depends(verify_api_key)])
-    async def dashboard(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
-        snapshot = load_latest_snapshot(settings)
+    async def dashboard() -> dict[str, Any]:
+        snapshot = app.state.dashboard_cache
         if snapshot is None:
             raise HTTPException(status_code=503, detail="Dashboard data is not ready yet. Try again shortly.")
         return snapshot
@@ -79,7 +82,8 @@ def create_app() -> FastAPI:
             data = await build_dashboard(client, settings)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Dashboard refresh failed: {exc}") from exc
-        save_snapshot(settings, data)
+        # Update in-memory cache
+        app.state.dashboard_cache = data
         return data
 
     @app.get("/tools", dependencies=[Depends(verify_api_key)])

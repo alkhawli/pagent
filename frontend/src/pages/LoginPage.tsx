@@ -5,6 +5,14 @@ const VALID_USERNAME = import.meta.env.VITE_LOGIN_USERNAME || ''
 const VALID_PASSWORD = import.meta.env.VITE_LOGIN_PASSWORD || ''
 const API_KEY = import.meta.env.VITE_API_KEY || ''
 
+// Debug log for development
+console.log('Login credentials loaded:', {
+  hasUsername: !!VALID_USERNAME,
+  hasPassword: !!VALID_PASSWORD,
+  hasApiKey: !!API_KEY,
+  username: VALID_USERNAME
+})
+
 export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -14,6 +22,8 @@ export function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    console.log('Login attempt:', { username, usernameMatch: username === VALID_USERNAME, passwordMatch: password === VALID_PASSWORD })
 
     if (username === VALID_USERNAME && password === VALID_PASSWORD) {
       sessionStorage.setItem('authenticated', 'true')
