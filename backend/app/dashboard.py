@@ -35,17 +35,24 @@ async def _call_tool_json(client: McpClient, name: str, arguments: dict[str, Any
     try:
         result = await client.call_tool(name, arguments or {})
     except Exception as exc:  # noqa: BLE001 - surface MCP/transport failures as data, not crashes
+        print(f"DEBUG: _call_tool_json exception for {name}: {exc}")
         return None, str(exc)
 
+    print(f"DEBUG: _call_tool_json {name} result keys: {result.keys()}")
     content = result.get("content")
+    print(f"DEBUG: _call_tool_json {name} content type: {type(content)}, len: {len(content) if isinstance(content, list) else 'N/A'}")
     text = content[0].get("text") if isinstance(content, list) and content and isinstance(content[0], dict) else None
     if text is None:
+        print(f"DEBUG: _call_tool_json {name} no text found, content={content}")
         return None, "No content returned by the tool"
     if text.startswith("Error"):
         return None, text
     try:
-        return json.loads(text), None
-    except json.JSONDecodeError:
+        parsed = json.loads(text)
+        print(f"DEBUG: _call_tool_json {name} parsed successfully, type={type(parsed)}")
+        return parsed, None
+    except json.JSONDecodeError as e:
+        print(f"DEBUG: _call_tool_json {name} JSON decode error: {e}, text={text[:100]}")
         return None, text
 
 
