@@ -22,11 +22,9 @@ COPY pyproject.toml uv.lock ./
 # Install Python dependencies
 RUN uv sync --frozen --no-install-project --no-dev
 
-# Install untis-mcp from GitHub - clone, install, then cleanup
+# Install untis-mcp from GitHub - clone and install as editable
 RUN git clone --depth 1 https://github.com/kohlsalem/untis-mcp.git /tmp/untis-mcp && \
-    cd /tmp/untis-mcp && \
-    uv pip install -e . && \
-    cd / && \
+    uv pip install -e /tmp/untis-mcp && \
     rm -rf /tmp/untis-mcp/.git
 
 # Copy application code (changes frequently, so last)
