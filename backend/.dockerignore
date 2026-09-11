@@ -1,11 +1,43 @@
-.venv/
+# Python
 __pycache__/
-**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
 .pytest_cache/
 .ruff_cache/
-*.pyc
-data/
+.mypy_cache/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
 .env
-.env.example
+.env.*
+*.env.local
+
+# Data
+data/
+*.db
+*.sqlite
+
+# Tests
 tests/
-README.md
+.coverage
+htmlcov/
+
+# Documentation
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore

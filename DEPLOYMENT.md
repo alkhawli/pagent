@@ -76,10 +76,19 @@ MCP-STARTUP-TIMEOUT-SECONDS
 
 ## Architecture
 
-- **Azure Container Registry** - Docker image storage
+- **Azure Container Registry** - Docker image storage with managed identity auth
 - **Azure App Service (Linux)** - Backend and frontend hosting
 - **Azure Key Vault** - Secret management
+- **Managed Identity** - ACR authentication (no passwords needed)
 - **Terraform** - Infrastructure as code
+
+### Key Configuration Details
+
+- **Docker Images**: Built for `linux/amd64` platform (Azure requirement)
+- **ACR Authentication**: Uses managed identity (no username/password)
+- **Image Tag**: Always use `latest` for deployments
+- **Backend Port**: 8000 (internal), mapped via WEBSITES_PORT
+- **Frontend Port**: 80 (nginx serves on port 80)
 
 ## Common Commands
 
@@ -159,6 +168,23 @@ After deployment:
 - Frontend: `https://pagent-frontend.azurewebsites.net`
 - Backend: `https://pagent-backend.azurewebsites.net`
 - Swagger: `https://pagent-backend.azurewebsites.net/docs`
+
+## Important Notes
+
+### Docker Platform
+All images MUST be built for `linux/amd64` platform. The build scripts handle this automatically with `docker buildx build --platform linux/amd64`.
+
+### ACR Authentication  
+Uses managed identity - no manual password configuration needed. Terraform sets up:
+- System-assigned managed identity on both web apps
+- `AcrPull` role assignment for each app
+- `acr_use_managed_identity_credentials = true` in app config
+
+### Image Tags
+Always use `latest` tag. The deployment scripts push both `latest` and timestamped tags.
+
+### Nginx Configuration (Frontend)
+The frontend Dockerfile creates nginx config directly in `/etc/nginx/conf.d/default.conf` (not using templates).
 
 ## Cleanup
 

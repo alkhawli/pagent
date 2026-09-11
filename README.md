@@ -44,32 +44,49 @@ A parent assistant chatbot for WebUntis, featuring AI-powered Q&A and automated 
 
 ### Deploy to Azure
 
+#### Initial Infrastructure Setup
+
 ```bash
-# Initialize infrastructure
+# 1. Initialize Terraform
 just tf-init
 just tf-apply
 
-# Set secrets in Key Vault (first time only)
+# 2. Set secrets in Key Vault (one-time setup)
 just kv-set-secret WEBUNTIS-USER "your-username"
 just kv-set-secret WEBUNTIS-PASSWORD "your-password"
 just kv-set-secret AZURE-FOUNDRY-API-KEY "your-api-key"
+just kv-set-secret AZURE-FOUNDRY-ENDPOINT "your-endpoint"
+just kv-set-secret AZURE-FOUNDRY-MODEL-DEPLOYMENT "gpt-4o-mini"
+just kv-set-secret AZURE-FOUNDRY-API-VERSION "2024-10-21"
 just kv-set-secret API-KEY "your-api-key"
-
-# Deploy application
-just deploy
-
-# Check status
-just status-azure
+just kv-set-secret APP-NAME "PAGENT Untis Chatbot"
+just kv-set-secret WEBUNTIS-SERVER "couven.webuntis.com"
+just kv-set-secret WEBUNTIS-SCHOOL "couven"
+just kv-set-secret MCP-COMMAND "/app/.venv/bin/python"
+just kv-set-secret MCP-ARGS "-m untis_mcp.server"
+just kv-set-secret MCP-STARTUP-TIMEOUT-SECONDS "60"
 ```
+
+#### Automated CI/CD
+
+**Every push to `master` branch automatically:**
+1. Runs quality checks (lint, tests)
+2. Builds Docker images for AMD64
+3. Pushes to Azure Container Registry
+4. Restarts Azure Web Apps
+5. Runs health checks
+
+**Monitor deployment:**
+- GitHub Actions: Check the "Actions" tab
+- View logs: `just logs-backend` or `just logs-frontend`
 
 **Live URLs:**
 - Frontend: https://pagent-frontend.azurewebsites.net
 - Backend: https://pagent-backend.azurewebsites.net
 
-**Azure Configuration:**
-- Images built for `linux/amd64` platform
-- ACR authentication via managed identity (automatic)
-- Always uses `latest` tag
+**Required GitHub Secrets:**
+Add these in your GitHub repository settings:
+- `AZURE_CREDENTIALS` - Service principal JSON for Azure login
 
 ## Configuration
 
