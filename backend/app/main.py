@@ -14,6 +14,7 @@ from app.config import Settings, get_settings
 from app.dashboard import build_dashboard
 from app.foundry_agent import answer_with_mcp
 from app.mcp_client import McpClient
+from app.meal_planner import generate_meal_plan
 from app.scheduler import create_scheduler, refresh_dashboard_snapshot
 
 
@@ -115,6 +116,13 @@ def create_app() -> FastAPI:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Foundry agent chat failed: {exc}") from exc
 
+    @app.post("/meal-plan/generate", dependencies=[Depends(verify_api_key)])
+    async def generate_meal_plan_endpoint(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        try:
+            return await generate_meal_plan(settings)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Meal plan generation failed: {exc}") from exc
+
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:
         return INDEX_HTML
@@ -145,7 +153,7 @@ INDEX_HTML = """
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PAGENT Untis Chatbot</title>
+  <title>PAGENT Family Assistant</title>
   <style>
     :root { color-scheme: light; font-family: Georgia, 'Times New Roman', serif; }
     body { margin: 0; min-height: 100vh; background: #f7f1e4; color: #1f2a24; }
@@ -160,10 +168,10 @@ INDEX_HTML = """
 </head>
 <body>
   <main>
-    <h1>Untis Chatbot</h1>
+    <h1>Family Assistant</h1>
     <form id="chat-form">
       <textarea id="message" name="message" placeholder="Welche Hausaufgaben gibt es?" required></textarea>
-      <button type="submit">Ask Untis</button>
+      <button type="submit">Ask Assistant</button>
     </form>
     <pre id="output">Ready.</pre>
   </main>

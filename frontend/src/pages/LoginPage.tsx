@@ -38,8 +38,8 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md">
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">PAGENT Untis</h1>
-          <p className="text-sm sm:text-base text-gray-600">Parent Dashboard Login</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">PAGENT</h1>
+          <p className="text-sm sm:text-base text-gray-600">Family Assistant Login</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

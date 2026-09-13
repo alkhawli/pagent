@@ -1,4 +1,4 @@
-import { Bot, LayoutDashboard, Menu, MessagesSquare, X } from 'lucide-react'
+import { Bot, LayoutDashboard, Menu, MessagesSquare, UtensilsCrossed, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/messages', label: 'Messages', icon: MessagesSquare, end: false },
   { to: '/chat', label: 'Chat', icon: Bot, end: false },
+  { to: '/meal-plan', label: 'برنامج الأكل', icon: UtensilsCrossed, end: false },
 ]
 
 export function Sidebar() {
@@ -44,7 +45,7 @@ export function Sidebar() {
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-800">PAGENT</p>
-            <p className="text-xs text-slate-400">School Dashboard</p>
+            <p className="text-xs text-slate-400">Family Assistant</p>
           </div>
         </div>
         <nav className="flex-1 space-y-1 px-3">

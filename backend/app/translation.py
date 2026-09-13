@@ -6,7 +6,7 @@ from app.config import Settings
 from app.foundry_agent import build_azure_client
 
 TRANSLATION_SYSTEM_PROMPT = (
-    "Translate school messages from German to English. "
+    "Translate messages from German to English. "
     'Respond with strict JSON only: {"subject": "...", "text": "..."}. '
     "Keep names, dates, and numbers unchanged. If the input is already in English, return it as-is."
 )

@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { DashboardProvider } from './context/DashboardContext'
 import { ChatPage } from './pages/ChatPage'
 import { LoginPage } from './pages/LoginPage'
+import { MealPlanPage } from './pages/MealPlanPage'
 import { MessagesPage } from './pages/MessagesPage'
 import { OverviewPage } from './pages/OverviewPage'
 
@@ -24,6 +25,7 @@ function App() {
           <Route index element={<OverviewPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="chat" element={<ChatPage />} />
+          <Route path="meal-plan" element={<MealPlanPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

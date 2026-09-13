@@ -290,7 +290,7 @@ def _build_recommendations(
             {
                 "priority": "medium",
                 "category": "Message",
-                "title": f"{messages['unread_count']} unread school message(s)",
+                "title": f"{messages['unread_count']} unread message(s)",
                 "detail": "Check the Messages tab for details.",
                 "date": None,
             }

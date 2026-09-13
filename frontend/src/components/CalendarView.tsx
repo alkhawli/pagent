@@ -109,15 +109,15 @@ export function CalendarView({ homework, todayIso, scheduleByDate }: CalendarVie
               onClick={() => setSelectedDate(day.iso)}
               className={`flex min-h-[110px] flex-col gap-1 rounded-lg border p-1.5 text-left transition hover:ring-2 hover:ring-indigo-300 ${
                 isToday
-                  ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-300'
+                  ? 'border-2 border-indigo-600 bg-indigo-100 ring-2 ring-indigo-400 shadow-md'
                   : day.inCurrentMonth
                     ? 'border-slate-100 bg-white'
                     : 'border-transparent bg-slate-50 text-slate-300'
               }`}
             >
-              <span className={`text-xs font-semibold ${isToday ? 'text-indigo-700' : 'text-slate-500'}`}>
+              <span className={`text-xs font-bold ${isToday ? 'text-indigo-900' : 'text-slate-500'}`}>
                 {day.date.getDate()}
-                {isToday && <span className="ml-1 rounded bg-indigo-600 px-1 py-0.5 text-[9px] text-white">Today</span>}
+                {isToday && <span className="ml-1 rounded bg-indigo-700 px-1.5 py-0.5 text-[10px] font-bold text-white">TODAY</span>}
               </span>
               <div className="flex flex-col gap-0.5">
                 {lessons.slice(0, 3).map((lesson, index) => (

@@ -81,3 +81,24 @@ export interface ChatResponse {
   answer: string
   tool_calls: ChatToolCall[]
 }
+
+export interface DayMeal {
+  date: string
+  day_name: string
+  recipe_name: string
+  prep_time: string
+  serves: string
+  ingredients: string[]
+  instructions: string[]
+}
+
+export interface ShoppingItem {
+  category: string
+  items: string[]
+}
+
+export interface MealPlan {
+  generated_at: string
+  days: DayMeal[]
+  shopping_list: ShoppingItem[]
+}
