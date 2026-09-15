@@ -101,8 +101,8 @@ resource "azurerm_linux_web_app" "backend" {
   tags                = var.tags
 
   site_config {
-    always_on                            = true
-    acr_use_managed_identity_credentials = true
+    always_on                         = true
+    container_registry_use_managed_identity = true
 
     application_stack {
       docker_registry_url = "https://${azurerm_container_registry.acr.login_server}"
@@ -154,8 +154,8 @@ resource "azurerm_linux_web_app" "frontend" {
   tags                = var.tags
 
   site_config {
-    always_on                            = true
-    acr_use_managed_identity_credentials = true
+    always_on                         = true
+    container_registry_use_managed_identity = true
 
     application_stack {
       docker_registry_url = "https://${azurerm_container_registry.acr.login_server}"
