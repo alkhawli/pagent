@@ -89,7 +89,9 @@ def _get_next_weekdays(count: int = 5) -> list[dict[str, str]]:
     return days
 
 
-async def generate_meal_plan(settings: Settings, azure_client: AsyncAzureOpenAI | None = None) -> dict[str, Any]:
+async def generate_meal_plan(
+    settings: Settings, azure_client: AsyncAzureOpenAI | None = None, food_wishes: list[str] | None = None
+) -> dict[str, Any]:
     """Generate a weekly meal plan using Azure OpenAI."""
     if not settings.azure_foundry_endpoint or not settings.azure_foundry_api_key:
         raise RuntimeError(
@@ -101,11 +103,15 @@ async def generate_meal_plan(settings: Settings, azure_client: AsyncAzureOpenAI 
 
     weekdays = _get_next_weekdays(5)
 
+    wishes_text = ""
+    if food_wishes:
+        wishes_text = f"\n\nالعيلة طلبت أكلات معيّنة، حاول تحطّها بالبرنامج:\n{chr(10).join(f'- {wish}' for wish in food_wishes)}\n"
+
     user_prompt = f"""اعمل برنامج أكل لهالأسبوع:
 
 الأيام:
 {chr(10).join(f"- {day['day_name']} ({day['date']})" for day in weekdays)}
-
+{wishes_text}
 تذكّر: بدنا 2-3 وصفات بس، كل وصفة بتكفي ليومين أو أكتر من الأيام هدول.
 """
 

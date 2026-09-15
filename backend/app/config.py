@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     translation_cache_blob_name: str = "message-translations.json"
     meal_plan_blob_container: str = "meal-plans"
     meal_plan_blob_name: str = "latest.json"
+    food_wishes_blob_name: str = "wishes.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

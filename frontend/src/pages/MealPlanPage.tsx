@@ -1,27 +1,33 @@
-import { RefreshCw, UtensilsCrossed } from 'lucide-react'
+import { Plus, RefreshCw, UtensilsCrossed, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { generateMealPlan } from '../api'
+import { addFoodWish, deleteFoodWish, generateMealPlan, getFoodWishes, getMealPlan } from '../api'
 import { ShoppingList } from '../components/ShoppingList'
 import { WeeklyMealCalendar } from '../components/WeeklyMealCalendar'
 import type { MealPlan } from '../types'
 
-const MEAL_PLAN_KEY = 'mealPlan'
-
 export function MealPlanPage() {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
+  const [wishes, setWishes] = useState<string[]>([])
+  const [newWish, setNewWish] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingWishes, setIsLoadingWishes] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load meal plan from localStorage on mount
+  // Load meal plan from backend on mount
   useEffect(() => {
-    const stored = localStorage.getItem(MEAL_PLAN_KEY)
-    if (stored) {
+    const loadData = async () => {
       try {
-        setMealPlan(JSON.parse(stored))
+        const [plan, wishesData] = await Promise.all([
+          getMealPlan().catch(() => null),
+          getFoodWishes().catch(() => ({ wishes: [] })),
+        ])
+        if (plan) setMealPlan(plan)
+        setWishes(wishesData.wishes)
       } catch {
-        // Ignore parse errors
+        // Ignore errors on initial load
       }
     }
+    void loadData()
   }, [])
 
   const handleRefresh = async () => {
@@ -31,11 +37,37 @@ export function MealPlanPage() {
     try {
       const newPlan = await generateMealPlan()
       setMealPlan(newPlan)
-      localStorage.setItem(MEAL_PLAN_KEY, JSON.stringify(newPlan))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ما قدرنا نعمل برنامج الأكل')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleAddWish = async () => {
+    if (!newWish.trim()) return
+
+    setIsLoadingWishes(true)
+    try {
+      const result = await addFoodWish(newWish.trim())
+      setWishes(result.wishes)
+      setNewWish('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ما قدرنا نضيف الرغبة')
+    } finally {
+      setIsLoadingWishes(false)
+    }
+  }
+
+  const handleDeleteWish = async (index: number) => {
+    setIsLoadingWishes(true)
+    try {
+      const result = await deleteFoodWish(index)
+      setWishes(result.wishes)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ما قدرنا نحذف الرغبة')
+    } finally {
+      setIsLoadingWishes(false)
     }
   }
 
@@ -106,6 +138,63 @@ export function MealPlanPage() {
           <p className="mt-2 text-xs text-slate-500">ممكن ياخد شوي وقت</p>
         </div>
       )}
+
+      {/* Food wishes section */}
+      <div className="rounded-lg border border-slate-200 bg-white px-4 py-6 shadow-sm md:px-6">
+        <h2 className="mb-4 text-right text-xl font-bold text-slate-800">رغبات الأكل</h2>
+        <p className="mb-4 text-right text-sm text-slate-600">
+          اكتب أكلات بتحبّها وبنحاول نحطّها بالبرنامج الجاي
+        </p>
+
+        {/* Add wish input */}
+        <div className="mb-4 flex flex-col gap-2 md:flex-row">
+          <input
+            type="text"
+            value={newWish}
+            onChange={(e) => setNewWish(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleAddWish()
+            }}
+            placeholder="مثلاً: مجدرة، يخنة، مقلوبة..."
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-right text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            disabled={isLoadingWishes}
+          />
+          <button
+            type="button"
+            onClick={() => void handleAddWish()}
+            disabled={isLoadingWishes || !newWish.trim()}
+            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
+          >
+            <Plus size={16} />
+            <span>ضيف</span>
+          </button>
+        </div>
+
+        {/* Wishes list */}
+        {wishes.length > 0 ? (
+          <ul className="space-y-2">
+            {wishes.map((wish, index) => (
+              <li
+                key={index}
+                className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3 text-right"
+              >
+                <span className="text-sm text-slate-700">{wish}</span>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteWish(index)}
+                  disabled={isLoadingWishes}
+                  className="text-slate-400 transition hover:text-red-600 disabled:opacity-50"
+                  aria-label="احذف"
+                >
+                  <X size={18} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center text-sm text-slate-500">ما في رغبات حالياً</p>
+        )}
+      </div>
 
       {/* Meal plan content */}
       {mealPlan && (

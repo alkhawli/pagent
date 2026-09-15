@@ -126,11 +126,49 @@ def create_app() -> FastAPI:
     @app.post("/meal-plan/generate", dependencies=[Depends(verify_api_key)])
     async def generate_meal_plan_endpoint(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
         try:
-            data = await generate_meal_plan(settings)
+            # Load food wishes
+            wishes_data = await app.state.blob_store.read_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name)
+            food_wishes = wishes_data.get("wishes", []) if wishes_data else []
+
+            data = await generate_meal_plan(settings, food_wishes=food_wishes)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Meal plan generation failed: {exc}") from exc
         await app.state.blob_store.write_json(settings.meal_plan_blob_container, settings.meal_plan_blob_name, data)
         return data
+
+    @app.get("/meal-plan/wishes", dependencies=[Depends(verify_api_key)])
+    async def get_food_wishes(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        wishes_data = await app.state.blob_store.read_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name)
+        return wishes_data or {"wishes": []}
+
+    @app.post("/meal-plan/wishes", dependencies=[Depends(verify_api_key)])
+    async def add_food_wish(
+        wish: dict[str, str],
+        settings: Settings = Depends(get_settings),
+    ) -> dict[str, Any]:
+        if not wish.get("text"):
+            raise HTTPException(status_code=400, detail="Wish text is required")
+
+        wishes_data = await app.state.blob_store.read_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name)
+        wishes = wishes_data.get("wishes", []) if wishes_data else []
+        wishes.append(wish["text"])
+
+        new_data = {"wishes": wishes}
+        await app.state.blob_store.write_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name, new_data)
+        return new_data
+
+    @app.delete("/meal-plan/wishes/{index}", dependencies=[Depends(verify_api_key)])
+    async def delete_food_wish(index: int, settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        wishes_data = await app.state.blob_store.read_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name)
+        wishes = wishes_data.get("wishes", []) if wishes_data else []
+
+        if index < 0 or index >= len(wishes):
+            raise HTTPException(status_code=404, detail="Wish not found")
+
+        wishes.pop(index)
+        new_data = {"wishes": wishes}
+        await app.state.blob_store.write_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name, new_data)
+        return new_data
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:

@@ -36,6 +36,27 @@ export function sendChatMessage(message: string): Promise<ChatResponse> {
   })
 }
 
+export function getMealPlan(): Promise<MealPlan> {
+  return request<MealPlan>('/meal-plan')
+}
+
 export function generateMealPlan(): Promise<MealPlan> {
   return request<MealPlan>('/meal-plan/generate', { method: 'POST' })
+}
+
+export function getFoodWishes(): Promise<{ wishes: string[] }> {
+  return request<{ wishes: string[] }>('/meal-plan/wishes')
+}
+
+export function addFoodWish(text: string): Promise<{ wishes: string[] }> {
+  return request<{ wishes: string[] }>('/meal-plan/wishes', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  })
+}
+
+export function deleteFoodWish(index: number): Promise<{ wishes: string[] }> {
+  return request<{ wishes: string[] }>(`/meal-plan/wishes/${index}`, {
+    method: 'DELETE',
+  })
 }

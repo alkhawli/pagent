@@ -26,7 +26,11 @@ async def refresh_dashboard_snapshot(settings: Settings, store: BlobJsonStore) -
 
 async def refresh_meal_plan_snapshot(settings: Settings, store: BlobJsonStore) -> None:
     try:
-        data = await generate_meal_plan(settings)
+        # Load food wishes
+        wishes_data = await store.read_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name)
+        food_wishes = wishes_data.get("wishes", []) if wishes_data else []
+
+        data = await generate_meal_plan(settings, food_wishes=food_wishes)
     except Exception:
         logger.exception("Meal plan snapshot refresh failed")
         return
