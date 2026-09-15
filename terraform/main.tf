@@ -118,6 +118,9 @@ resource "azurerm_linux_web_app" "backend" {
     {
       "WEBSITES_PORT"                       = "8000"
       "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "false"
+      "AZURE_STORAGE_ACCOUNT_NAME"          = azurerm_storage_account.app_storage.name
+      "DASHBOARD_BLOB_CONTAINER"            = azurerm_storage_container.dashboard_data.name
+      "MEAL_PLAN_BLOB_CONTAINER"            = azurerm_storage_container.meal_plans.name
     }
   )
 
@@ -218,4 +221,18 @@ resource "azurerm_storage_container" "meal_plans" {
   name                  = "meal-plans"
   storage_account_id    = azurerm_storage_account.app_storage.id
   container_access_type = "private"
+}
+
+# Storage container for dashboard (schedule/Untis) snapshots
+resource "azurerm_storage_container" "dashboard_data" {
+  name                  = "dashboard-data"
+  storage_account_id    = azurerm_storage_account.app_storage.id
+  container_access_type = "private"
+}
+
+# Key-less blob access for the backend Web App via its managed identity
+resource "azurerm_role_assignment" "backend_storage_blob" {
+  scope                = azurerm_storage_account.app_storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_web_app.backend.identity[0].principal_id
 }

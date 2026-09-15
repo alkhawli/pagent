@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
+from app.blob_storage import BlobJsonStore
 from app.config import Settings
 from app.mcp_client import McpClient
 from app.translation import translate_to_english
@@ -90,27 +90,16 @@ async def _get_homework(client: McpClient) -> dict[str, Any]:
     return {"items": items, "error": None}
 
 
-def _translation_cache_path(settings: Settings) -> Path:
-    return Path(settings.dashboard_data_dir) / "message_translations.json"
+async def load_translation_cache(settings: Settings, store: BlobJsonStore) -> dict[str, dict[str, Any]]:
+    cache = await store.read_json(settings.dashboard_blob_container, settings.translation_cache_blob_name)
+    return cache or {}
 
 
-def load_translation_cache(settings: Settings) -> dict[str, dict[str, Any]]:
-    path = _translation_cache_path(settings)
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
+async def save_translation_cache(settings: Settings, store: BlobJsonStore, cache: dict[str, dict[str, Any]]) -> None:
+    await store.write_json(settings.dashboard_blob_container, settings.translation_cache_blob_name, cache)
 
 
-def save_translation_cache(settings: Settings, cache: dict[str, dict[str, Any]]) -> None:
-    path = _translation_cache_path(settings)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-async def _get_messages(client: McpClient, settings: Settings) -> dict[str, Any]:
+async def _get_messages(client: McpClient, settings: Settings, store: BlobJsonStore) -> dict[str, Any]:
     data, error = await _call_tool_json(client, "untis_get_messages")
     if error:
         return {"items": [], "unread_count": 0, "error": error}
@@ -123,7 +112,7 @@ async def _get_messages(client: McpClient, settings: Settings) -> dict[str, Any]
     # trigger dozens of translation calls on every refresh.
     top_messages = raw_messages[:10]
 
-    cache = load_translation_cache(settings)
+    cache = await load_translation_cache(settings, store)
     entries: list[dict[str, Any] | None] = [None] * len(top_messages)
     pending: list[tuple[int, str, str]] = []
 
@@ -157,7 +146,7 @@ async def _get_messages(client: McpClient, settings: Settings) -> dict[str, Any]
                 "text_en": text_en,
                 "translated_at": translated_at,
             }
-        save_translation_cache(settings, cache)
+        await save_translation_cache(settings, store, cache)
 
     items = [
         {
@@ -340,11 +329,11 @@ def _build_recommendations(
     return recommendations
 
 
-async def build_dashboard(client: McpClient, settings: Settings) -> dict[str, Any]:
+async def build_dashboard(client: McpClient, settings: Settings, store: BlobJsonStore) -> dict[str, Any]:
     students, homework, messages, subject_map, room_map = await asyncio.gather(
         _get_students(client),
         _get_homework(client),
-        _get_messages(client, settings),
+        _get_messages(client, settings, store),
         _lookup_id_name_map(client, "getSubjects"),
         _lookup_id_name_map(client, "getRooms"),
     )
@@ -366,39 +355,3 @@ async def build_dashboard(client: McpClient, settings: Settings) -> dict[str, An
         "messages": messages,
         "schedule": {"range_start": range_start.isoformat(), "range_end": range_end.isoformat(), **schedule},
     }
-
-
-
-# NOTE: Snapshot functions below are deprecated - dashboard now uses in-memory caching (app.state.dashboard_cache)
-# Kept for backwards compatibility but no longer used in production
-
-def _snapshots_root(settings: Settings) -> Path:
-    return Path(settings.dashboard_data_dir) / "snapshots"
-
-
-def latest_snapshot_path(settings: Settings) -> Path:
-    return Path(settings.dashboard_data_dir) / "latest.json"
-
-
-def save_snapshot(settings: Settings, data: dict[str, Any]) -> Path:
-    """DEPRECATED: Persist a dashboard snapshot under data/snapshots/<year>/<month>/<timestamp>.json and update latest.json."""
-    now = datetime.now()
-    month_dir = _snapshots_root(settings) / f"{now:%Y}" / f"{now:%m}"
-    month_dir.mkdir(parents=True, exist_ok=True)
-
-    payload = json.dumps(data, ensure_ascii=False, indent=2)
-    snapshot_path = month_dir / f"{now:%Y-%m-%dT%H-%M-%S}.json"
-    snapshot_path.write_text(payload, encoding="utf-8")
-
-    latest_path = latest_snapshot_path(settings)
-    latest_path.parent.mkdir(parents=True, exist_ok=True)
-    latest_path.write_text(payload, encoding="utf-8")
-    return snapshot_path
-
-
-def load_latest_snapshot(settings: Settings) -> dict[str, Any] | None:
-    """DEPRECATED: Load snapshot from disk. Use app.state.dashboard_cache instead."""
-    path = latest_snapshot_path(settings)
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))

@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
+from app.blob_storage import BlobJsonStore
 from app.config import Settings, get_settings
 from app.dashboard import build_dashboard
 from app.foundry_agent import answer_with_mcp
@@ -29,18 +30,18 @@ class ToolCallRequest(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    # Initialize in-memory cache
-    app.state.dashboard_cache = None
-    # Create scheduler with app reference for cache updates
-    scheduler = create_scheduler(settings, app)
+    store = BlobJsonStore(settings)
+    app.state.blob_store = store
+    scheduler = create_scheduler(settings, store)
     scheduler.start()
-    # Trigger initial dashboard build
-    asyncio.create_task(refresh_dashboard_snapshot(settings, app))
+    # Trigger initial dashboard build so blob storage is populated on first boot
+    asyncio.create_task(refresh_dashboard_snapshot(settings, store))
     app.state.scheduler = scheduler
     try:
         yield
     finally:
         scheduler.shutdown(wait=False)
+        await store.close()
 
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -68,8 +69,8 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/dashboard", dependencies=[Depends(verify_api_key)])
-    async def dashboard() -> dict[str, Any]:
-        snapshot = app.state.dashboard_cache
+    async def dashboard(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        snapshot = await app.state.blob_store.read_json(settings.dashboard_blob_container, settings.dashboard_blob_name)
         if snapshot is None:
             raise HTTPException(status_code=503, detail="Dashboard data is not ready yet. Try again shortly.")
         return snapshot
@@ -80,11 +81,10 @@ def create_app() -> FastAPI:
         settings: Settings = Depends(get_settings),
     ) -> dict[str, Any]:
         try:
-            data = await build_dashboard(client, settings)
+            data = await build_dashboard(client, settings, app.state.blob_store)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Dashboard refresh failed: {exc}") from exc
-        # Update in-memory cache
-        app.state.dashboard_cache = data
+        await app.state.blob_store.write_json(settings.dashboard_blob_container, settings.dashboard_blob_name, data)
         return data
 
     @app.get("/tools", dependencies=[Depends(verify_api_key)])
@@ -116,12 +116,21 @@ def create_app() -> FastAPI:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Foundry agent chat failed: {exc}") from exc
 
+    @app.get("/meal-plan", dependencies=[Depends(verify_api_key)])
+    async def meal_plan(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        snapshot = await app.state.blob_store.read_json(settings.meal_plan_blob_container, settings.meal_plan_blob_name)
+        if snapshot is None:
+            raise HTTPException(status_code=503, detail="Meal plan is not ready yet. Try again shortly.")
+        return snapshot
+
     @app.post("/meal-plan/generate", dependencies=[Depends(verify_api_key)])
     async def generate_meal_plan_endpoint(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
         try:
-            return await generate_meal_plan(settings)
+            data = await generate_meal_plan(settings)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Meal plan generation failed: {exc}") from exc
+        await app.state.blob_store.write_json(settings.meal_plan_blob_container, settings.meal_plan_blob_name, data)
+        return data
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:

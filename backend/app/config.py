@@ -23,8 +23,16 @@ class Settings(BaseSettings):
     azure_foundry_api_key: str = ""
     azure_foundry_model_deployment: str = "gpt-4o-mini"
     azure_foundry_api_version: str = "2024-10-21"
-    dashboard_data_dir: str = "data"
-    dashboard_refresh_times: str = "07:00,13:00,19:00"
+    dashboard_refresh_times: str = "06:30"
+    meal_plan_refresh_day: str = "fri"
+    meal_plan_refresh_time: str = "20:00"
+    azure_storage_account_name: str = ""
+    azure_storage_connection_string: str = ""
+    dashboard_blob_container: str = "dashboard-data"
+    dashboard_blob_name: str = "latest.json"
+    translation_cache_blob_name: str = "message-translations.json"
+    meal_plan_blob_container: str = "meal-plans"
+    meal_plan_blob_name: str = "latest.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
