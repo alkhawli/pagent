@@ -6,7 +6,6 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
@@ -170,9 +169,9 @@ def create_app() -> FastAPI:
         await app.state.blob_store.write_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name, new_data)
         return new_data
 
-    @app.get("/", response_class=HTMLResponse)
-    async def index() -> str:
-        return INDEX_HTML
+    @app.get("/")
+    async def index() -> dict[str, str]:
+        return {"message": "PAGENT Family Assistant API", "status": "running"}
 
     return app
 
@@ -192,55 +191,3 @@ def verify_api_key(
 
 
 app = create_app()
-
-
-INDEX_HTML = """
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PAGENT Family Assistant</title>
-  <style>
-    :root { color-scheme: light; font-family: Georgia, 'Times New Roman', serif; }
-    body { margin: 0; min-height: 100vh; background: #f7f1e4; color: #1f2a24; }
-    main { max-width: 860px; margin: 0 auto; padding: 48px 20px; }
-    h1 { font-size: clamp(2rem, 7vw, 4.8rem); line-height: .95; margin: 0 0 24px; letter-spacing: 0; }
-    form { display: grid; gap: 12px; }
-    textarea { min-height: 112px; resize: vertical; border: 2px solid #1f2a24; border-radius: 8px; padding: 14px; font: 1rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; background: #fffaf0; }
-    button { width: fit-content; border: 0; border-radius: 8px; padding: 12px 18px; background: #0f5132; color: #fffaf0; font-weight: 700; cursor: pointer; }
-    button:disabled { opacity: .6; cursor: wait; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #fffaf0; border: 2px solid #1f2a24; border-radius: 8px; padding: 16px; min-height: 160px; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Family Assistant</h1>
-    <form id="chat-form">
-      <textarea id="message" name="message" placeholder="Welche Hausaufgaben gibt es?" required></textarea>
-      <button type="submit">Ask Assistant</button>
-    </form>
-    <pre id="output">Ready.</pre>
-  </main>
-  <script>
-    const form = document.querySelector('#chat-form');
-    const output = document.querySelector('#output');
-    const button = document.querySelector('button');
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      button.disabled = true;
-      output.textContent = 'Connecting to MCP...';
-      const message = document.querySelector('#message').value;
-      const response = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      });
-      const data = await response.json();
-      output.textContent = response.ok ? (data.answer || JSON.stringify(data, null, 2)) : JSON.stringify(data, null, 2);
-      button.disabled = false;
-    });
-  </script>
-</body>
-</html>
-"""
