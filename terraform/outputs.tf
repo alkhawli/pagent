@@ -59,3 +59,20 @@ output "frontend_identity_principal_id" {
   description = "Frontend Web App managed identity principal ID"
   value       = azurerm_linux_web_app.frontend.identity[0].principal_id
 }
+
+output "storage_account_name" {
+  description = "Name of the application storage account"
+  value       = azurerm_storage_account.app_storage.name
+}
+
+output "storage_account_primary_key" {
+  description = "Primary access key for the storage account"
+  value       = azurerm_storage_account.app_storage.primary_access_key
+  sensitive   = true
+}
+
+output "storage_account_connection_string" {
+  description = "Connection string for the storage account"
+  value       = azurerm_storage_account.app_storage.primary_connection_string
+  sensitive   = true
+}

@@ -75,6 +75,12 @@ variable "frontend_env_vars" {
   sensitive   = true
 }
 
+variable "storage_account_name" {
+  description = "Name of the application storage account (must be globally unique, 3-24 chars, lowercase/numbers only)"
+  type        = string
+  default     = "pagentstorage"
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

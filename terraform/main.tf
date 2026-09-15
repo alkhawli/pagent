@@ -101,7 +101,7 @@ resource "azurerm_linux_web_app" "backend" {
   tags                = var.tags
 
   site_config {
-    always_on                 = true
+    always_on                            = true
     acr_use_managed_identity_credentials = true
 
     application_stack {
@@ -154,7 +154,7 @@ resource "azurerm_linux_web_app" "frontend" {
   tags                = var.tags
 
   site_config {
-    always_on                 = true
+    always_on                            = true
     acr_use_managed_identity_credentials = true
 
     application_stack {
@@ -193,4 +193,29 @@ resource "azurerm_role_assignment" "frontend_acr_pull" {
   scope                = azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_linux_web_app.frontend.identity[0].principal_id
+}
+
+# Storage Account for application data
+resource "azurerm_storage_account" "app_storage" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.main.name
+  location                 = azurerm_resource_group.main.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  blob_properties {
+    versioning_enabled = true
+    delete_retention_policy {
+      days = 7
+    }
+  }
+
+  tags = var.tags
+}
+
+# Storage container for meal plans
+resource "azurerm_storage_container" "meal_plans" {
+  name                  = "meal-plans"
+  storage_account_name  = azurerm_storage_account.app_storage.name
+  container_access_type = "private"
 }
