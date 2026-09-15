@@ -216,6 +216,6 @@ resource "azurerm_storage_account" "app_storage" {
 # Storage container for meal plans
 resource "azurerm_storage_container" "meal_plans" {
   name                  = "meal-plans"
-  storage_account_name  = azurerm_storage_account.app_storage.name
+  storage_account_id    = azurerm_storage_account.app_storage.id
   container_access_type = "private"
 }
