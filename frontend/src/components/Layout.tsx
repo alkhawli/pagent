@@ -6,7 +6,7 @@ export function Layout() {
   const { snapshot, isRefreshing, error, refresh } = useDashboard()
   const navigate = useNavigate()
   const location = useLocation()
-  const isMealPlanPage = location.pathname.startsWith('/meal-plan')
+  const isDashboardPage = location.pathname === '/'
 
   const handleLogout = () => {
     sessionStorage.clear()
@@ -19,7 +19,7 @@ export function Layout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 md:px-6">
           <div className="ml-12 md:ml-0">
-            {!isMealPlanPage && (
+            {isDashboardPage && (
               <>
                 <p className="text-sm font-medium text-slate-800 truncate max-w-[150px] sm:max-w-none">
                   {snapshot?.student?.displayName ?? 'No student found'}
@@ -31,15 +31,17 @@ export function Layout() {
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              disabled={isRefreshing}
-              className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-50 md:px-4"
-            >
-              <span className="hidden sm:inline">{isRefreshing ? 'Refreshing…' : 'Refresh now'}</span>
-              <span className="sm:hidden">↻</span>
-            </button>
+            {isDashboardPage && (
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={isRefreshing}
+                className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-50 md:px-4"
+              >
+                <span className="hidden sm:inline">{isRefreshing ? 'Refreshing…' : 'Refresh now'}</span>
+                <span className="sm:hidden">↻</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleLogout}
