@@ -2,6 +2,15 @@ import type { ChatResponse, DashboardSnapshot, MealPlan } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8020'
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const apiKey = sessionStorage.getItem('apiKey')
   const headers: HeadersInit = { 'Content-Type': 'application/json' }
@@ -16,7 +25,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!response.ok) {
     const body = await response.text().catch(() => '')
-    throw new Error(`Request to ${path} failed (${response.status}): ${body}`)
+    throw new ApiError(`Request to ${path} failed (${response.status}): ${body}`, response.status)
   }
   return (await response.json()) as T
 }
