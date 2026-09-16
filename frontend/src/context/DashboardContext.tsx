@@ -1,7 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { getDashboard, refreshDashboard } from '../api'
+import { ApiError, getDashboard, refreshDashboard } from '../api'
 import type { DashboardSnapshot } from '../types'
+
+const NOT_READY_POLL_INTERVAL_MS = 5000
 
 interface DashboardContextValue {
   snapshot: DashboardSnapshot | null
@@ -18,20 +20,33 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const load = useCallback(async () => {
     try {
-      setSnapshot(await getDashboard())
+      const data = await getDashboard()
+      setSnapshot(data)
       setError(null)
+      setIsLoading(false)
     } catch (err) {
+      if (err instanceof ApiError && err.status === 503) {
+        // Backend hasn't generated a snapshot yet (e.g. right after startup) - keep polling
+        // instead of surfacing an error, so the dashboard fills in on its own once ready.
+        pollTimeoutRef.current = setTimeout(() => void load(), NOT_READY_POLL_INTERVAL_MS)
+        return
+      }
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data.')
-    } finally {
       setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
     void load()
+    return () => {
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current)
+      }
+    }
   }, [load])
 
   const refresh = useCallback(async () => {
