@@ -132,17 +132,35 @@ async def generate_meal_plan(
         plan_data = json.loads(content)
 
         # Build the response with day-by-day breakdown
-        days = []
-        recipe_map = {recipe["name"]: recipe for recipe in plan_data.get("recipes", [])}
+        recipes = plan_data.get("recipes", [])
+
+        def normalize(text: str) -> str:
+            return "".join(text.split())
+
+        unmatched_indices: list[int] = []
+        matched_recipe_for_day: list[dict[str, Any] | None] = []
 
         for weekday in weekdays:
-            # Find which recipe covers this day
+            # Find which recipe covers this day (tolerate whitespace differences)
             matching_recipe = None
-            for recipe in plan_data.get("recipes", []):
-                if weekday["day_name"] in recipe.get("days", []):
+            target = normalize(weekday["day_name"])
+            for recipe in recipes:
+                recipe_days = [normalize(d) for d in recipe.get("days", [])]
+                if target in recipe_days:
                     matching_recipe = recipe
                     break
+            matched_recipe_for_day.append(matching_recipe)
+            if matching_recipe is None:
+                unmatched_indices.append(len(matched_recipe_for_day) - 1)
 
+        # Fallback: if the LLM didn't explicitly assign a recipe to every day,
+        # distribute the returned recipes round-robin instead of leaving days empty.
+        if unmatched_indices and recipes:
+            for position, day_index in enumerate(unmatched_indices):
+                matched_recipe_for_day[day_index] = recipes[position % len(recipes)]
+
+        days = []
+        for weekday, matching_recipe in zip(weekdays, matched_recipe_for_day):
             if matching_recipe:
                 days.append(
                     {
@@ -156,7 +174,7 @@ async def generate_meal_plan(
                     }
                 )
             else:
-                # Fallback if no recipe assigned
+                # Only reachable if the LLM returned no recipes at all
                 days.append(
                     {
                         "date": weekday["date"],
