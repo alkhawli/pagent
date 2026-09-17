@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -14,14 +15,28 @@ from app.meal_planner import generate_meal_plan
 logger = logging.getLogger(__name__)
 
 
+async def _record_refresh_status(settings: Settings, store: BlobJsonStore, *, success: bool, error: str | None) -> None:
+    now = datetime.now().isoformat(timespec="seconds")
+    status = await store.read_json(settings.dashboard_blob_container, settings.dashboard_status_blob_name) or {}
+    status["last_attempt_at"] = now
+    if success:
+        status["last_success_at"] = now
+        status["last_error"] = None
+    else:
+        status["last_error"] = error
+    await store.write_json(settings.dashboard_blob_container, settings.dashboard_status_blob_name, status)
+
+
 async def refresh_dashboard_snapshot(settings: Settings, store: BlobJsonStore) -> None:
     client = McpClient(settings)
     try:
         data = await build_dashboard(client, settings, store)
-    except Exception:
+    except Exception as exc:
         logger.exception("Dashboard snapshot refresh failed")
+        await _record_refresh_status(settings, store, success=False, error=str(exc))
         return
     await store.write_json(settings.dashboard_blob_container, settings.dashboard_blob_name, data)
+    await _record_refresh_status(settings, store, success=True, error=None)
 
 
 async def refresh_meal_plan_snapshot(settings: Settings, store: BlobJsonStore) -> None:
