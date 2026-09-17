@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     azure_storage_connection_string: str = ""
     dashboard_blob_container: str = "dashboard-data"
     dashboard_blob_name: str = "latest.json"
+    dashboard_status_blob_name: str = "refresh-status.json"
     translation_cache_blob_name: str = "message-translations.json"
     meal_plan_blob_container: str = "meal-plans"
     meal_plan_blob_name: str = "latest.json"

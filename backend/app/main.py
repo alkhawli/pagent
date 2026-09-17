@@ -33,8 +33,12 @@ async def lifespan(app: FastAPI):
     app.state.blob_store = store
     scheduler = create_scheduler(settings, store)
     scheduler.start()
-    # Trigger initial dashboard build so blob storage is populated on first boot
-    asyncio.create_task(refresh_dashboard_snapshot(settings, store))
+    # Only build on startup if no snapshot exists yet (first-ever deploy). Blob storage
+    # persists across restarts/redeploys, so an existing snapshot should just be reused;
+    # the cron schedule or a manual POST /dashboard/refresh handles keeping it fresh.
+    existing_snapshot = await store.read_json(settings.dashboard_blob_container, settings.dashboard_blob_name)
+    if existing_snapshot is None:
+        asyncio.create_task(refresh_dashboard_snapshot(settings, store))
     app.state.scheduler = scheduler
     try:
         yield
@@ -73,6 +77,11 @@ def create_app() -> FastAPI:
         if snapshot is None:
             raise HTTPException(status_code=503, detail="Dashboard data is not ready yet. Try again shortly.")
         return snapshot
+
+    @app.get("/dashboard/status", dependencies=[Depends(verify_api_key)])
+    async def dashboard_status(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        status = await app.state.blob_store.read_json(settings.dashboard_blob_container, settings.dashboard_status_blob_name)
+        return status or {"last_attempt_at": None, "last_success_at": None, "last_error": None}
 
     @app.post("/dashboard/refresh", dependencies=[Depends(verify_api_key)])
     async def refresh_dashboard(
