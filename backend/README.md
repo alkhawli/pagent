@@ -51,6 +51,20 @@ AZURE_FOUNDRY_API_VERSION=2024-10-21
 endpoint from `AZURE_FOUNDRY_ENDPOINT` and calls Chat Completions with function/tool calling, where each MCP tool
 is exposed to the model as a callable function.
 
+### Web search (news / trends pages)
+
+The `/news` and `/trends` endpoints use a separate, pre-built Azure AI Foundry agent that has its own web search
+tool configured in the Foundry portal (e.g. Bing grounding). Set these values in `.env`:
+
+```env
+AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
+FOUNDRY_AGENT_NAME=personal-web
+FOUNDRY_AGENT_VERSION=3
+```
+
+This uses `DefaultAzureCredential` (no API key), so you need to be logged in via `az login` locally; in Azure it
+uses the Web App's managed identity, which must have access to the Foundry project.
+
 ## Run
 
 ```powershell
