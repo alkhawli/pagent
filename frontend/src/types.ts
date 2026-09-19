@@ -102,3 +102,38 @@ export interface MealPlan {
   days: DayMeal[]
   shopping_list: ShoppingItem[]
 }
+
+export interface NewsItem {
+  title: string
+  summary: string
+  source: string
+  url: string
+}
+
+export interface NewsSnapshot {
+  generated_at: string
+  world: NewsItem[]
+  tech: NewsItem[]
+  football: NewsItem[]
+}
+
+export interface AiTrendItem {
+  title: string
+  summary: string
+  source: string
+  url: string
+}
+
+export interface GithubRepoItem {
+  name: string
+  description: string
+  url: string
+  language: string
+  stars: string
+}
+
+export interface TrendsSnapshot {
+  generated_at: string
+  ai_trends: AiTrendItem[]
+  github_repos: GithubRepoItem[]
+}

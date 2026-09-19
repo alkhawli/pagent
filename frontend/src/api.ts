@@ -1,4 +1,4 @@
-import type { ChatResponse, DashboardSnapshot, MealPlan } from './types'
+import type { ChatResponse, DashboardSnapshot, MealPlan, NewsSnapshot, TrendsSnapshot } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8020'
 
@@ -68,4 +68,20 @@ export function deleteFoodWish(index: number): Promise<{ wishes: string[] }> {
   return request<{ wishes: string[] }>(`/meal-plan/wishes/${index}`, {
     method: 'DELETE',
   })
+}
+
+export function getNews(): Promise<NewsSnapshot> {
+  return request<NewsSnapshot>('/news')
+}
+
+export function refreshNews(): Promise<NewsSnapshot> {
+  return request<NewsSnapshot>('/news/refresh', { method: 'POST' })
+}
+
+export function getTrends(): Promise<TrendsSnapshot> {
+  return request<TrendsSnapshot>('/trends')
+}
+
+export function refreshTrends(): Promise<TrendsSnapshot> {
+  return request<TrendsSnapshot>('/trends/refresh', { method: 'POST' })
 }

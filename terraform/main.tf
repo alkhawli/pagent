@@ -121,6 +121,8 @@ resource "azurerm_linux_web_app" "backend" {
       "AZURE_STORAGE_ACCOUNT_NAME"          = azurerm_storage_account.app_storage.name
       "DASHBOARD_BLOB_CONTAINER"            = azurerm_storage_container.dashboard_data.name
       "MEAL_PLAN_BLOB_CONTAINER"            = azurerm_storage_container.meal_plans.name
+      "NEWS_BLOB_CONTAINER"                 = azurerm_storage_container.news_data.name
+      "TRENDS_BLOB_CONTAINER"               = azurerm_storage_container.trends_data.name
     }
   )
 
@@ -226,6 +228,20 @@ resource "azurerm_storage_container" "meal_plans" {
 # Storage container for dashboard (schedule/Untis) snapshots
 resource "azurerm_storage_container" "dashboard_data" {
   name                  = "dashboard-data"
+  storage_account_id    = azurerm_storage_account.app_storage.id
+  container_access_type = "private"
+}
+
+# Storage container for daily news snapshots
+resource "azurerm_storage_container" "news_data" {
+  name                  = "news-data"
+  storage_account_id    = azurerm_storage_account.app_storage.id
+  container_access_type = "private"
+}
+
+# Storage container for weekly AI/GitHub trends snapshots
+resource "azurerm_storage_container" "trends_data" {
+  name                  = "trends-data"
   storage_account_id    = azurerm_storage_account.app_storage.id
   container_access_type = "private"
 }
