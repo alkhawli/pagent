@@ -23,9 +23,20 @@ class Settings(BaseSettings):
     azure_foundry_api_key: str = ""
     azure_foundry_model_deployment: str = "gpt-4o-mini"
     azure_foundry_api_version: str = "2024-10-21"
+    # Azure AI Foundry project + pre-built agent used for web-search (news/trends pages).
+    # azure_ai_project_endpoint is the "Azure AI Project" endpoint shown in the Foundry portal
+    # Overview page (can be the same resource as azure_foundry_endpoint above).
+    # foundry_agent_name/foundry_agent_version reference a Foundry agent (already configured with
+    # its own web search tool) invoked via the agent_reference responses API.
+    azure_ai_project_endpoint: str = ""
+    foundry_agent_name: str = "personal-web"
+    foundry_agent_version: str = "3"
     dashboard_refresh_times: str = "06:30"
     meal_plan_refresh_day: str = "fri"
     meal_plan_refresh_time: str = "20:00"
+    news_refresh_time: str = "07:00"
+    trends_refresh_day: str = "mon"
+    trends_refresh_time: str = "08:00"
     azure_storage_account_name: str = ""
     azure_storage_connection_string: str = ""
     dashboard_blob_container: str = "dashboard-data"
@@ -35,6 +46,10 @@ class Settings(BaseSettings):
     meal_plan_blob_container: str = "meal-plans"
     meal_plan_blob_name: str = "latest.json"
     food_wishes_blob_name: str = "wishes.json"
+    news_blob_container: str = "news-data"
+    news_blob_name: str = "latest.json"
+    trends_blob_container: str = "trends-data"
+    trends_blob_name: str = "latest.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

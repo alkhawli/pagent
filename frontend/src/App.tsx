@@ -6,7 +6,9 @@ import { ChatPage } from './pages/ChatPage'
 import { LoginPage } from './pages/LoginPage'
 import { MealPlanPage } from './pages/MealPlanPage'
 import { MessagesPage } from './pages/MessagesPage'
+import { NewsPage } from './pages/NewsPage'
 import { OverviewPage } from './pages/OverviewPage'
+import { TrendsPage } from './pages/TrendsPage'
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
           <Route path="messages" element={<MessagesPage />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="meal-plan" element={<MealPlanPage />} />
+          <Route path="news" element={<NewsPage />} />
+          <Route path="trends" element={<TrendsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

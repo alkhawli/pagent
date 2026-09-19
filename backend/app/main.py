@@ -15,7 +15,14 @@ from app.dashboard import build_dashboard
 from app.foundry_agent import answer_with_mcp
 from app.mcp_client import McpClient
 from app.meal_planner import generate_meal_plan
-from app.scheduler import create_scheduler, refresh_dashboard_snapshot
+from app.news import generate_news
+from app.scheduler import (
+    create_scheduler,
+    refresh_dashboard_snapshot,
+    refresh_news_snapshot,
+    refresh_trends_snapshot,
+)
+from app.trends import generate_trends
 
 
 class ChatRequest(BaseModel):
@@ -39,6 +46,15 @@ async def lifespan(app: FastAPI):
     existing_snapshot = await store.read_json(settings.dashboard_blob_container, settings.dashboard_blob_name)
     if existing_snapshot is None:
         asyncio.create_task(refresh_dashboard_snapshot(settings, store))
+
+    existing_news = await store.read_json(settings.news_blob_container, settings.news_blob_name)
+    if existing_news is None:
+        asyncio.create_task(refresh_news_snapshot(settings, store))
+
+    existing_trends = await store.read_json(settings.trends_blob_container, settings.trends_blob_name)
+    if existing_trends is None:
+        asyncio.create_task(refresh_trends_snapshot(settings, store))
+
     app.state.scheduler = scheduler
     try:
         yield
@@ -177,6 +193,38 @@ def create_app() -> FastAPI:
         new_data = {"wishes": wishes}
         await app.state.blob_store.write_json(settings.meal_plan_blob_container, settings.food_wishes_blob_name, new_data)
         return new_data
+
+    @app.get("/news", dependencies=[Depends(verify_api_key)])
+    async def news(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        snapshot = await app.state.blob_store.read_json(settings.news_blob_container, settings.news_blob_name)
+        if snapshot is None:
+            raise HTTPException(status_code=503, detail="News is not ready yet. Try again shortly.")
+        return snapshot
+
+    @app.post("/news/refresh", dependencies=[Depends(verify_api_key)])
+    async def refresh_news(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        try:
+            data = await generate_news(settings)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"News refresh failed: {exc}") from exc
+        await app.state.blob_store.write_json(settings.news_blob_container, settings.news_blob_name, data)
+        return data
+
+    @app.get("/trends", dependencies=[Depends(verify_api_key)])
+    async def trends(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        snapshot = await app.state.blob_store.read_json(settings.trends_blob_container, settings.trends_blob_name)
+        if snapshot is None:
+            raise HTTPException(status_code=503, detail="Trends are not ready yet. Try again shortly.")
+        return snapshot
+
+    @app.post("/trends/refresh", dependencies=[Depends(verify_api_key)])
+    async def refresh_trends(settings: Settings = Depends(get_settings)) -> dict[str, Any]:
+        try:
+            data = await generate_trends(settings)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Trends refresh failed: {exc}") from exc
+        await app.state.blob_store.write_json(settings.trends_blob_container, settings.trends_blob_name, data)
+        return data
 
     @app.get("/")
     async def index() -> dict[str, str]:

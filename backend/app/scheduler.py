@@ -11,6 +11,8 @@ from app.config import Settings
 from app.dashboard import build_dashboard
 from app.mcp_client import McpClient
 from app.meal_planner import generate_meal_plan
+from app.news import generate_news
+from app.trends import generate_trends
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,24 @@ async def refresh_meal_plan_snapshot(settings: Settings, store: BlobJsonStore) -
     await store.write_json(settings.meal_plan_blob_container, settings.meal_plan_blob_name, data)
 
 
+async def refresh_news_snapshot(settings: Settings, store: BlobJsonStore) -> None:
+    try:
+        data = await generate_news(settings)
+    except Exception:
+        logger.exception("News snapshot refresh failed")
+        return
+    await store.write_json(settings.news_blob_container, settings.news_blob_name, data)
+
+
+async def refresh_trends_snapshot(settings: Settings, store: BlobJsonStore) -> None:
+    try:
+        data = await generate_trends(settings)
+    except Exception:
+        logger.exception("Trends snapshot refresh failed")
+        return
+    await store.write_json(settings.trends_blob_container, settings.trends_blob_name, data)
+
+
 def create_scheduler(settings: Settings, store: BlobJsonStore) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler()
 
@@ -71,6 +91,26 @@ def create_scheduler(settings: Settings, store: BlobJsonStore) -> AsyncIOSchedul
         CronTrigger(day_of_week=settings.meal_plan_refresh_day, hour=int(meal_hour), minute=int(meal_minute or 0)),
         args=[settings, store],
         id="meal-plan-refresh",
+        replace_existing=True,
+    )
+
+    news_hour, _, news_minute = settings.news_refresh_time.partition(":")
+    scheduler.add_job(
+        refresh_news_snapshot,
+        CronTrigger(hour=int(news_hour), minute=int(news_minute or 0)),
+        args=[settings, store],
+        id="news-refresh",
+        replace_existing=True,
+    )
+
+    trends_hour, _, trends_minute = settings.trends_refresh_time.partition(":")
+    scheduler.add_job(
+        refresh_trends_snapshot,
+        CronTrigger(
+            day_of_week=settings.trends_refresh_day, hour=int(trends_hour), minute=int(trends_minute or 0)
+        ),
+        args=[settings, store],
+        id="trends-refresh",
         replace_existing=True,
     )
 

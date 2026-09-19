@@ -52,6 +52,12 @@ backend_env_vars = {
   "AZURE_FOUNDRY_API_KEY"          = "@Microsoft.KeyVault(SecretUri=https://pagent-kv-46073.vault.azure.net/secrets/AZURE-FOUNDRY-API-KEY/)"
   "AZURE_FOUNDRY_MODEL_DEPLOYMENT" = "@Microsoft.KeyVault(SecretUri=https://pagent-kv-46073.vault.azure.net/secrets/AZURE-FOUNDRY-MODEL-DEPLOYMENT/)"
   "AZURE_FOUNDRY_API_VERSION"      = "@Microsoft.KeyVault(SecretUri=https://pagent-kv-46073.vault.azure.net/secrets/AZURE-FOUNDRY-API-VERSION/)"
+
+  # Foundry web-search agent (news/trends pages) - auth is via managed identity, not an API key,
+  # so only the project endpoint needs a Key Vault secret; agent name/version are not sensitive.
+  "AZURE_AI_PROJECT_ENDPOINT" = "@Microsoft.KeyVault(SecretUri=https://pagent-kv-46073.vault.azure.net/secrets/AZURE-AI-PROJECT-ENDPOINT/)"
+  "FOUNDRY_AGENT_NAME"        = "personal-web"
+  "FOUNDRY_AGENT_VERSION"     = "3"
 }
 
 # Frontend environment variables
